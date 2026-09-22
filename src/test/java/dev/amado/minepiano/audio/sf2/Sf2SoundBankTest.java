@@ -1,6 +1,7 @@
 package dev.amado.minepiano.audio.sf2;
 
 import dev.amado.minepiano.audio.Voice;
+import dev.amado.minepiano.audio.PianoPreset;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -10,6 +11,25 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Sf2SoundBankTest {
+    @Test
+    void velocityProducesStrictlyIncreasingLoudnessAndZeroIsSilent() {
+        Sf2SoundBank bank = new Sf2SoundBank();
+        float low = peak(bank.newVoice(69, 30));
+        float medium = peak(bank.newVoice(69, 70));
+        float high = peak(bank.newVoice(69, 127));
+        assertTrue(low > 0.0f);
+        assertTrue(low < medium && medium < high, low + " < " + medium + " < " + high);
+        assertEquals(0.0f, peak(bank.newVoice(69, 0)));
+    }
+
+    @Test
+    void presetRoundTripsAndChangesRenderedVoice() {
+        Sf2SoundBank base = new Sf2SoundBank();
+        Sf2SoundBank dark = base.withPreset(PianoPreset.DARK);
+        assertEquals(PianoPreset.DARK, dark.preset());
+        assertTrue(Math.abs(peak(base.newVoice(69, 100)) - peak(dark.newVoice(69, 100))) > 0.0001f);
+    }
+
     @Test
     void bundledPianoParsesAndRendersSmoothly() throws Exception {
         Sf2Parser.Parsed parsed;
@@ -59,5 +79,13 @@ class Sf2SoundBankTest {
         java.util.Arrays.fill(frame, 0.0f);
         assertTrue(!voice.renderAdd(frame, frame.length));
         for (float value : frame) assertTrue(Math.abs(value) < 0.0001f, "released voice decays to zero");
+    }
+
+    private static float peak(Voice voice) {
+        float[] frame = new float[960];
+        voice.renderAdd(frame, frame.length);
+        float peak = 0.0f;
+        for (float value : frame) peak = Math.max(peak, Math.abs(value));
+        return peak;
     }
 }

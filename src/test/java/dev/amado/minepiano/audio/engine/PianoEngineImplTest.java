@@ -76,6 +76,26 @@ class PianoEngineImplTest {
 
     @Test
     @Timeout(5)
+    void zeroVelocityActsAsNoteOff() throws Exception {
+        TestBank bank = new TestBank(64);
+        PianoEngineImpl engine = new PianoEngineImpl(bank, LocalOutput.clockPaced());
+        AtomicInteger blocks = new AtomicInteger();
+        engine.addFrameConsumer((frame, length) -> blocks.incrementAndGet());
+        try {
+            engine.start();
+            engine.noteOn(60, 100);
+            awaitBlocks(blocks, 1);
+            TestVoice voice = bank.voices.getFirst();
+            engine.noteOn(60, 0);
+            assertTrue(voice.released.await(1, TimeUnit.SECONDS));
+            assertFalse(engine.isNoteActive(60));
+        } finally {
+            engine.stop();
+        }
+    }
+
+    @Test
+    @Timeout(5)
     void allNotesOffClearsEveryVoiceInOneBlock() throws Exception {
         TestBank bank = new TestBank(64);
         PianoEngineImpl engine = new PianoEngineImpl(bank, LocalOutput.clockPaced());
@@ -85,12 +105,25 @@ class PianoEngineImplTest {
             engine.start();
             for (int note = 40; note < 50; note++) engine.noteOn(note, 100);
             awaitBlocks(blocks, 1);
+            engine.setSustain(true);
             int before = blocks.get();
             engine.allNotesOff();
             assertFalse(engine.isNoteActive(40), "logical state clears immediately");
             awaitBlocks(blocks, before + 1);
+            assertTrue(engine.isSustainOn());
             assertTrue(bank.voices.stream().allMatch(voice -> voice.finished));
             for (int note = 0; note < 128; note++) assertFalse(engine.isNoteActive(note));
+
+            engine.noteOn(60, 100);
+            awaitBlocks(blocks, before + 2);
+            assertTrue(engine.isNoteActive(60));
+            assertFalse(bank.voices.getFirst().finished);
+
+            engine.setSustain(false);
+            before = blocks.get();
+            engine.allNotesOff();
+            awaitBlocks(blocks, before + 1);
+            assertFalse(engine.isSustainOn());
         } finally {
             engine.stop();
         }

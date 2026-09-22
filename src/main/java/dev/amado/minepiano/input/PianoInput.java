@@ -17,8 +17,13 @@ public final class PianoInput {
     private boolean sustain;
 
     public PianoInput(KeyMap keyMap, int octave) {
+        this(keyMap, octave, false);
+    }
+
+    public PianoInput(KeyMap keyMap, int octave, boolean sustain) {
         this.keyMap = keyMap;
         this.octave = octave;
+        this.sustain = sustain;
     }
 
     public OptionalInt press(int keyCode) {
@@ -61,6 +66,10 @@ public final class PianoInput {
 
     public boolean toggleSustain() {
         return sustain = !sustain;
+    }
+
+    public void setSustain(boolean sustain) {
+        this.sustain = sustain;
     }
 
     public boolean sustain() {

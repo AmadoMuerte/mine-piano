@@ -47,11 +47,13 @@ public final class PianoScreen extends Screen {
         this.engine = engine;
         this.config = config;
         keyMap = new KeyMap(config);
-        input = new PianoInput(keyMap, config.octave);
+        input = new PianoInput(keyMap, config.octave, config.sustain);
+        engine.setSustain(config.sustain);
     }
 
     @Override
     protected void init() {
+        engine.setSustain(input.sustain());
         panelWidth = Math.min(760, Math.max(280, width - 20));
         int keyboardHeight = Math.max(82, Math.min(170, height - (controlsCollapsed ? 104 : 122)));
         panelHeight = 54 + keyboardHeight + (controlsCollapsed ? 24 : 42);
@@ -120,7 +122,8 @@ public final class PianoScreen extends Screen {
         }
         if (event.key() == GLFW.GLFW_KEY_SPACE) {
             input.press(event.key());
-            engine.setSustain(input.sustain());
+            config.sustain = input.sustain();
+            engine.setSustain(config.sustain);
             return true;
         }
         OptionalInt offset = keyMap.offset(event.key());
@@ -150,28 +153,26 @@ public final class PianoScreen extends Screen {
 
     @Override
     public void onClose() {
-        silence();
+        stopNotes();
         try { config.save(); } catch (IOException ignored) { }
         minecraft.gui.setScreen(null);
     }
 
     @Override
     public void removed() {
-        silence();
+        stopNotes();
         super.removed();
     }
 
     private void openSettings() {
-        silence();
+        stopNotes();
         minecraft.gui.setScreen(new PianoSettingsScreen(this, config, engine));
     }
 
-    private void silence() {
+    private void stopNotes() {
         engine.allNotesOff();
-        engine.setSustain(false);
         heldNotes.clear();
         input.heldKeys().forEach(input::release);
-        if (input.sustain()) input.toggleSustain();
     }
 
     private void octaveDown() {
@@ -185,7 +186,8 @@ public final class PianoScreen extends Screen {
     }
 
     private void toggleSustain() {
-        engine.setSustain(input.toggleSustain());
+        config.sustain = input.toggleSustain();
+        engine.setSustain(config.sustain);
     }
 
     private void toggleHints() {

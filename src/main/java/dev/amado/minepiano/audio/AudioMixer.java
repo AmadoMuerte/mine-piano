@@ -14,7 +14,7 @@ public final class AudioMixer {
     private static final int PANIC_FADE_FRAMES = 480; // 10 ms
     private static final int CONSUMER_TAIL_BLOCKS = 25;
 
-    private final SoundBank soundBank;
+    private volatile SoundBank soundBank;
     private final LocalOutput localOutput;
     private final PianoEngineImpl.CommandQueue commands;
     private final AtomicLongArray logicalNotes;
@@ -39,7 +39,7 @@ public final class AudioMixer {
     private volatile FrameConsumer[] consumers = new FrameConsumer[0];
     private volatile boolean running;
     private boolean started;
-    private boolean sustain;
+    private volatile boolean sustain;
     private float masterGain = 1.0f;
     private long nextAge;
     private int tailBlocks;
@@ -83,22 +83,27 @@ public final class AudioMixer {
         }
     }
 
+    void setSoundBank(SoundBank soundBank) {
+        this.soundBank = java.util.Objects.requireNonNull(soundBank);
+    }
+
     private void run() {
         while (running) renderBlock();
     }
 
     void renderBlock() {
-        drainCommands();
+        SoundBank blockSoundBank = soundBank;
+        drainCommands(blockSoundBank);
         Arrays.fill(mix, 0.0f);
         renderRetired();
         boolean rendered = false;
         for (int slot = 0; slot < MAX_VOICES; slot++) {
-            if (voices[slot] == null && pendingNotes[slot] >= 0) tryStart(slot);
+            if (voices[slot] == null && pendingNotes[slot] >= 0) tryStart(slot, blockSoundBank);
             Voice voice = voices[slot];
             if (voice == null) continue;
             rendered = true;
-            if (panic[slot]) renderFading(slot, PANIC_FADE_FRAMES, true);
-            else if (stealing[slot]) renderFading(slot, STEAL_FADE_FRAMES, false);
+            if (panic[slot]) renderFading(slot, PANIC_FADE_FRAMES, true, blockSoundBank);
+            else if (stealing[slot]) renderFading(slot, STEAL_FADE_FRAMES, false, blockSoundBank);
             else renderNormal(slot);
         }
 
@@ -123,14 +128,14 @@ public final class AudioMixer {
         localOutput.write(pcm, BLOCK_FRAMES);
     }
 
-    private void drainCommands() {
+    private void drainCommands(SoundBank blockSoundBank) {
         for (int count = 0; count < 4096; count++) {
             long command = commands.poll();
             if (command == 0L) return;
             int type = (int) (command >>> 56);
             long value = command & 0x00ff_ffff_ffff_ffffL;
             switch (type) {
-                case 1 -> noteOn((int) value & 127, (int) (value >>> 7) & 127);
+                case 1 -> noteOn((int) value & 127, (int) (value >>> 7) & 127, blockSoundBank);
                 case 2 -> noteOff((int) value & 127);
                 case 3 -> setSustain(value != 0L);
                 case 4 -> allNotesOff();
@@ -140,13 +145,13 @@ public final class AudioMixer {
         }
     }
 
-    private void noteOn(int midi, int velocity) {
+    private void noteOn(int midi, int velocity, SoundBank blockSoundBank) {
         setLogical(midi, true);
         int empty = emptySlot();
         if (empty >= 0) {
             pendingNotes[empty] = midi;
             pendingVelocities[empty] = velocity;
-            if (tryStart(empty)) return;
+            if (tryStart(empty, blockSoundBank)) return;
             pendingNotes[empty] = -1;
         }
         int victim = stealCandidate();
@@ -191,7 +196,6 @@ public final class AudioMixer {
     }
 
     private void allNotesOff() {
-        sustain = false;
         logicalNotes.set(0, 0L);
         logicalNotes.set(1, 0L);
         for (int slot = 0; slot < MAX_VOICES; slot++) {
@@ -207,6 +211,10 @@ public final class AudioMixer {
         allNotesOffPending.set(false);
     }
 
+    boolean isSustainOn() {
+        return sustain;
+    }
+
     private void renderNormal(int slot) {
         Arrays.fill(scratch, 0.0f);
         boolean produced = voices[slot].renderAdd(scratch, BLOCK_FRAMES);
@@ -220,7 +228,7 @@ public final class AudioMixer {
         if (!produced || voices[slot].isFinished()) clearSlot(slot);
     }
 
-    private void renderFading(int slot, int fadeFrames, boolean discardPending) {
+    private void renderFading(int slot, int fadeFrames, boolean discardPending, SoundBank blockSoundBank) {
         Voice old = voices[slot];
         Arrays.fill(scratch, 0.0f);
         old.renderAdd(scratch, BLOCK_FRAMES);
@@ -235,7 +243,7 @@ public final class AudioMixer {
         voices[slot] = null;
         held[slot] = deferred[slot] = releasing[slot] = stealing[slot] = panic[slot] = false;
         if (discardPending) pendingNotes[slot] = -1;
-        else if (tryStart(slot)) renderStartedVoice(slot, fadeFrames, BLOCK_FRAMES - fadeFrames);
+        else if (tryStart(slot, blockSoundBank)) renderStartedVoice(slot, fadeFrames, BLOCK_FRAMES - fadeFrames);
     }
 
     private void renderStartedVoice(int slot, int offset, int frames) {
@@ -272,11 +280,11 @@ public final class AudioMixer {
         // ponytail: retirement slots match the default bank's 128-voice pool; make capacity a SoundBank contract if larger banks arrive.
     }
 
-    private boolean tryStart(int slot) {
+    private boolean tryStart(int slot, SoundBank blockSoundBank) {
         int midi = pendingNotes[slot];
         if (midi < 0) return false;
         try {
-            Voice voice = soundBank.newVoice(midi, pendingVelocities[slot]);
+            Voice voice = blockSoundBank.newVoice(midi, pendingVelocities[slot]);
             if (voice == null) throw new IllegalStateException("SoundBank returned null voice");
             voices[slot] = voice;
             notes[slot] = midi;

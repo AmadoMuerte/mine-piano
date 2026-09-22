@@ -3,6 +3,7 @@ package dev.amado.minepiano.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
+import dev.amado.minepiano.audio.PianoPreset;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,8 +23,9 @@ public final class PianoConfig {
     public float localVolume = 1.0F;
     public float svcDistance = 16.0F;
     public boolean transmitToVoiceChat = true;
+    public boolean sustain = false;
     public String soundfont = "";
-    public int preset = 0;
+    public String presetName = PianoPreset.REALISTIC.name();
 
     public static PianoConfig load() {
         return load(DEFAULT_PATH);
@@ -34,12 +36,23 @@ public final class PianoConfig {
             if (Files.exists(path)) {
                 String json = Files.readString(path);
                 PianoConfig config = GSON.fromJson(json, PianoConfig.class);
-                if (config != null && !JsonParser.parseString(json).getAsJsonObject().has("layoutVersion"))
-                    config.layoutVersion = 0;
+                var object = JsonParser.parseString(json).getAsJsonObject();
+                boolean migrated = false;
+                if (config != null && !object.has("layoutVersion")) config.layoutVersion = 0;
+                if (config != null && !object.has("presetName")) {
+                    int oldPreset = object.has("preset") ? object.get("preset").getAsInt() : 0;
+                    PianoPreset[] presets = PianoPreset.values();
+                    config.presetName = presets[Math.max(0, Math.min(presets.length - 1, oldPreset))].name();
+                    migrated = true;
+                }
+                if (config != null) config.presetName = PianoPreset.fromName(config.presetName).name();
                 if (config != null && config.valid()) {
                     if (config.layoutVersion < 3) {
                         config.keymap = defaultKeymap();
                         config.layoutVersion = 3;
+                        migrated = true;
+                    }
+                    if (migrated) {
                         try {
                             config.save(path);
                         } catch (IOException ignored) {
@@ -89,6 +102,7 @@ public final class PianoConfig {
         return keymap != null
             && keymap.entrySet().stream().allMatch(entry -> entry.getKey() != null && entry.getValue() != null)
             && velocity >= 0 && velocity <= 127
-            && soundfont != null;
+            && soundfont != null
+            && presetName != null;
     }
 }

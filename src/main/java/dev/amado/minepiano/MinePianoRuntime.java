@@ -43,9 +43,11 @@ public final class MinePianoRuntime {
                 }
             }
             engine = new PianoEngineImpl();
+            engine.setPreset(dev.amado.minepiano.audio.PianoPreset.fromName(CONFIG.presetName));
             VoiceChatOutputHolder.setEnabled(CONFIG.transmitToVoiceChat);
             engine.addFrameConsumer(VoiceChatOutputHolder.getFeeder());
             engine.setMasterGain(CONFIG.masterVolume);
+            engine.setSustain(CONFIG.sustain);
             engine.start();
         }
         return engine;

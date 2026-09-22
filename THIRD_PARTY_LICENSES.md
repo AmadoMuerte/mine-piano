@@ -9,6 +9,8 @@
 - Extracted asset: `UprightPianoKW-small-20190703.sf2`
   - SHA-256: `cf2a98eb38a32c4954b4b6e2caae4112d62dd8e892eceefdd7942b0e7d01ac2f`
 
+All ten included presets are voicing variations of this asset. No additional SoundFont is bundled.
+
 ## Simple Voice Chat
 
 Compile-only API dependency: `de.maxhenkel.voicechat:voicechat-api:2.6.24`. Not bundled.

@@ -1,6 +1,7 @@
 package dev.amado.minepiano.audio.sf2;
 
 import dev.amado.minepiano.audio.SoundBank;
+import dev.amado.minepiano.audio.PianoPreset;
 import dev.amado.minepiano.audio.Voice;
 
 import java.io.IOException;
@@ -14,21 +15,35 @@ public final class Sf2SoundBank implements SoundBank {
     private static final int POOL_SIZE = 128;
     private final Sf2Zone[] zones;
     private final Sf2Voice[] voices;
+    private final PianoPreset preset;
 
-    public Sf2SoundBank() { this(0, 0); }
+    public Sf2SoundBank() { this(0, 0, PianoPreset.REALISTIC); }
 
     public Sf2SoundBank(int bank, int program) {
-        this(loadDefault(bank, program));
+        this(bank, program, PianoPreset.REALISTIC);
     }
 
-    public Sf2SoundBank(Path path) { this(path, 0, 0); }
+    public Sf2SoundBank(int bank, int program, PianoPreset preset) {
+        this(loadDefault(bank, program), preset);
+    }
+
+    public Sf2SoundBank(Path path) { this(path, 0, 0, PianoPreset.REALISTIC); }
 
     public Sf2SoundBank(Path path, int bank, int program) {
-        this(parse(path, bank, program));
+        this(path, bank, program, PianoPreset.REALISTIC);
     }
 
-    private Sf2SoundBank(Sf2Parser.Parsed parsed) {
-        zones = parsed.zones();
+    public Sf2SoundBank(Path path, int bank, int program, PianoPreset preset) {
+        this(parse(path, bank, program), preset);
+    }
+
+    private Sf2SoundBank(Sf2Parser.Parsed parsed, PianoPreset preset) {
+        this(parsed.zones(), preset);
+    }
+
+    private Sf2SoundBank(Sf2Zone[] zones, PianoPreset preset) {
+        this.zones = zones;
+        this.preset = java.util.Objects.requireNonNull(preset);
         int maxLayers = 1;
         for (int key = 0; key < 128; key++) {
             for (int velocity = 0; velocity < 128; velocity++) {
@@ -38,11 +53,19 @@ public final class Sf2SoundBank implements SoundBank {
             }
         }
         voices = new Sf2Voice[POOL_SIZE];
-        for (int i = 0; i < voices.length; i++) voices[i] = new Sf2Voice(maxLayers);
+        for (int i = 0; i < voices.length; i++) voices[i] = new Sf2Voice(maxLayers, preset);
     }
 
+    /** Builds a fresh voice pool while sharing immutable decoded samples. */
+    public Sf2SoundBank withPreset(PianoPreset preset) {
+        if (preset.soundfontResource() != null) return new Sf2SoundBank(loadResource(preset.soundfontResource(), 0, 0), preset);
+        return new Sf2SoundBank(zones, preset);
+    }
+
+    public PianoPreset preset() { return preset; }
+
     @Override
-    public synchronized Voice newVoice(int midi, int velocity) {
+    public Voice newVoice(int midi, int velocity) {
         if (midi < 0 || midi > 127 || velocity < 0 || velocity > 127) {
             throw new IllegalArgumentException("MIDI note and velocity must be in 0..127");
         }
@@ -86,6 +109,15 @@ public final class Sf2SoundBank implements SoundBank {
         }
     }
 
+    private static Sf2Parser.Parsed loadResource(String resource, int bank, int program) {
+        try (InputStream input = Sf2SoundBank.class.getClassLoader().getResourceAsStream(resource)) {
+            if (input == null) throw new IllegalStateException("Missing classpath resource " + resource);
+            return new Sf2Parser().parse(input, bank, program);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot load SoundFont", e);
+        }
+    }
+
     private static Sf2Parser.Parsed parse(Path path, int bank, int program) {
         try {
             return new Sf2Parser().parse(path, bank, program);
@@ -104,11 +136,18 @@ public final class Sf2SoundBank implements SoundBank {
         private final float[] releaseMultipliers;
         private final int[] stages;
         private final int[] stageFrames;
+        private final int[] attackFrames;
+        private final int[] releaseFrames;
+        private final float[] sustainGains;
+        private final float[] decayMultipliers;
+        private final PianoPreset preset;
         private int layerCount;
+        private float voiceGain;
+        private float lowPassState;
         private volatile boolean released;
         private volatile boolean finished = true;
 
-        Sf2Voice(int maxLayers) {
+        Sf2Voice(int maxLayers, PianoPreset preset) {
             activeZones = new Sf2Zone[maxLayers];
             phases = new double[maxLayers];
             steps = new double[maxLayers];
@@ -116,11 +155,18 @@ public final class Sf2SoundBank implements SoundBank {
             releaseMultipliers = new float[maxLayers];
             stages = new int[maxLayers];
             stageFrames = new int[maxLayers];
+            attackFrames = new int[maxLayers];
+            releaseFrames = new int[maxLayers];
+            sustainGains = new float[maxLayers];
+            decayMultipliers = new float[maxLayers];
+            this.preset = preset;
         }
 
         void start(Sf2Zone[] zones, int midi, int velocity) {
             layerCount = 0;
             released = false;
+            lowPassState = 0.0f;
+            voiceGain = preset.gain() * (float) Math.pow(velocity / 127.0, preset.velocityExponent());
             for (Sf2Zone zone : zones) {
                 if (!matches(zone, midi, velocity)) continue;
                 int i = layerCount++;
@@ -128,8 +174,14 @@ public final class Sf2SoundBank implements SoundBank {
                 phases[i] = zone.sample.start;
                 steps[i] = zone.sample.sampleRate / 48_000.0 * Math.pow(2.0,
                         (midi - zone.rootKey + zone.coarseTune
-                                + (zone.fineTune + zone.sample.pitchCorrection) / 100.0) / 12.0);
+                                + (zone.fineTune + zone.sample.pitchCorrection
+                                + preset.detuneCents() * (i % 2 == 0 ? -1.0 : 1.0)) / 100.0) / 12.0);
                 envelopes[i] = 0.0f;
+                attackFrames[i] = Math.max(1, Math.round(zone.attackFrames * preset.attackScale()));
+                releaseFrames[i] = Math.max(1, Math.round(zone.releaseFrames * preset.releaseScale()));
+                sustainGains[i] = Math.min(1.0f, zone.sustainGain * preset.sustainLevel());
+                decayMultipliers[i] = zone.decayFrames == 0 || sustainGains[i] == 1.0f ? 1.0f
+                        : (float) Math.pow(sustainGains[i], 1.0 / zone.decayFrames);
                 stages[i] = ATTACK;
                 stageFrames[i] = 0;
             }
@@ -164,10 +216,14 @@ public final class Sf2SoundBank implements SoundBank {
                     else if (next >= sample.end) next = index;
                     float fraction = (float) (phase - index);
                     float value = sample.pcm[index] + (sample.pcm[next] - sample.pcm[index]) * fraction;
-                    mixed += value * envelopes[layer] * zone.gain;
+                    mixed += value * envelopes[layer] * zone.gain * voiceGain;
                     phases[layer] = phase + steps[layer];
                     advanceEnvelope(layer, zone);
                     any = true;
+                }
+                if (preset.lowPass() > 0.0f) {
+                    lowPassState += (mixed - lowPassState) * (1.0f - preset.lowPass());
+                    mixed = lowPassState;
                 }
                 out[frame] = Math.max(-1.0f, Math.min(1.0f, out[frame] + mixed));
             }
@@ -180,20 +236,20 @@ public final class Sf2SoundBank implements SoundBank {
         private void advanceEnvelope(int layer, Sf2Zone zone) {
             switch (stages[layer]) {
                 case ATTACK -> {
-                    envelopes[layer] = Math.min(1.0f, envelopes[layer] + 1.0f / zone.attackFrames);
-                    if (++stageFrames[layer] >= zone.attackFrames) enter(layer, HOLD, 1.0f);
+                    envelopes[layer] = Math.min(1.0f, envelopes[layer] + 1.0f / attackFrames[layer]);
+                    if (++stageFrames[layer] >= attackFrames[layer]) enter(layer, HOLD, 1.0f);
                 }
                 case HOLD -> {
                     if (++stageFrames[layer] >= zone.holdFrames) enter(layer, DECAY, 1.0f);
                 }
                 case DECAY -> {
-                    envelopes[layer] *= zone.decayMultiplier;
-                    if (++stageFrames[layer] >= zone.decayFrames) enter(layer, SUSTAIN, zone.sustainGain);
+                    envelopes[layer] *= decayMultipliers[layer];
+                    if (++stageFrames[layer] >= zone.decayFrames) enter(layer, SUSTAIN, sustainGains[layer]);
                 }
                 case SUSTAIN -> { }
                 case RELEASE -> {
                     envelopes[layer] *= releaseMultipliers[layer];
-                    if (++stageFrames[layer] >= zone.releaseFrames
+                    if (++stageFrames[layer] >= releaseFrames[layer]
                             || envelopes[layer] <= RELEASE_FLOOR * RELEASE_FLOOR) {
                         stages[layer] = DONE;
                         envelopes[layer] = 0.0f;
@@ -201,7 +257,7 @@ public final class Sf2SoundBank implements SoundBank {
                 }
                 default -> { }
             }
-            if (released && stages[layer] < RELEASE) beginRelease(layer, zone);
+            if (released && stages[layer] < RELEASE) beginRelease(layer);
         }
 
         private void enter(int layer, int stage, float envelope) {
@@ -210,10 +266,10 @@ public final class Sf2SoundBank implements SoundBank {
             envelopes[layer] = envelope;
         }
 
-        private void beginRelease(int layer, Sf2Zone zone) {
+        private void beginRelease(int layer) {
             stages[layer] = RELEASE;
             stageFrames[layer] = 0;
-            releaseMultipliers[layer] = (float) Math.pow(RELEASE_FLOOR, 1.0 / zone.releaseFrames);
+            releaseMultipliers[layer] = (float) Math.pow(RELEASE_FLOOR, 1.0 / releaseFrames[layer]);
         }
 
         @Override

@@ -19,6 +19,7 @@ public final class PianoEngineImpl implements PianoEngine {
     private final AtomicLongArray logicalNotes = new AtomicLongArray(2);
     private final AtomicBoolean allNotesOffPending = new AtomicBoolean();
     private final AudioMixer mixer;
+    private final Sf2SoundBank sourceBank;
 
     public PianoEngineImpl() {
         this(new Sf2SoundBank());
@@ -31,6 +32,7 @@ public final class PianoEngineImpl implements PianoEngine {
     public PianoEngineImpl(SoundBank soundBank, LocalOutput localOutput) {
         mixer = new AudioMixer(Objects.requireNonNull(soundBank), Objects.requireNonNull(localOutput),
                 commands, logicalNotes, allNotesOffPending);
+        sourceBank = soundBank instanceof Sf2SoundBank sf2 ? sf2 : null;
     }
 
     @Override
@@ -56,6 +58,11 @@ public final class PianoEngineImpl implements PianoEngine {
     }
 
     @Override
+    public boolean isSustainOn() {
+        return mixer.isSustainOn();
+    }
+
+    @Override
     public void allNotesOff() {
         allNotesOffPending.set(true);
         clearLogicalNotes();
@@ -66,6 +73,13 @@ public final class PianoEngineImpl implements PianoEngine {
     public void setMasterGain(float gain) {
         if (!Float.isFinite(gain) || gain < 0.0f) throw new IllegalArgumentException("Gain must be finite and non-negative");
         commands.offer(pack(MASTER_GAIN, Float.floatToRawIntBits(gain) & 0xffff_ffffL));
+    }
+
+    @Override
+    public void setPreset(PianoPreset preset) {
+        Objects.requireNonNull(preset, "preset");
+        if (sourceBank == null) return;
+        mixer.setSoundBank(sourceBank.withPreset(preset));
     }
 
     @Override

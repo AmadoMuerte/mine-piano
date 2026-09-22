@@ -5,8 +5,10 @@ public interface PianoEngine {
     void noteOn(int midi, int velocity); // 0..127
     void noteOff(int midi);
     void setSustain(boolean on);
+    boolean isSustainOn();
     void allNotesOff();
     void setMasterGain(float gain);
+    void setPreset(PianoPreset preset);
     boolean isNoteActive(int midi);
     void addFrameConsumer(FrameConsumer consumer);
     void start();
