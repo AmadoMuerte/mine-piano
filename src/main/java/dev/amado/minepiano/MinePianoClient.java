@@ -16,6 +16,7 @@ public final class MinePianoClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        MinePianoRuntime.initialize();
     }
 
     public static void setScreenOpener(Supplier<Screen> opener) {
