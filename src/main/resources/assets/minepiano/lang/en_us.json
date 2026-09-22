@@ -1,0 +1,17 @@
+{
+  "key.minepiano.open": "Open Piano",
+  "key.minepiano.category": "Mine Piano",
+  "gui.minepiano.title": "Piano",
+  "gui.minepiano.octave": "Octave",
+  "gui.minepiano.octave_down": "Octave Down",
+  "gui.minepiano.octave_up": "Octave Up",
+  "gui.minepiano.sustain": "Sustain",
+  "gui.minepiano.settings": "Settings",
+  "gui.minepiano.velocity": "Velocity",
+  "gui.minepiano.master_volume": "Master Volume",
+  "gui.minepiano.local_volume": "Local Volume",
+  "gui.minepiano.svc_distance": "Voice Chat Distance",
+  "gui.minepiano.soundfont": "SoundFont",
+  "gui.minepiano.preset": "Preset",
+  "gui.minepiano.keymap": "Key Bindings"
+}

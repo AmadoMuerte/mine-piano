@@ -1,0 +1,17 @@
+{
+  "key.minepiano.open": "Открыть пианино",
+  "key.minepiano.category": "Mine Piano",
+  "gui.minepiano.title": "Пианино",
+  "gui.minepiano.octave": "Октава",
+  "gui.minepiano.octave_down": "Октава ниже",
+  "gui.minepiano.octave_up": "Октава выше",
+  "gui.minepiano.sustain": "Сустейн",
+  "gui.minepiano.settings": "Настройки",
+  "gui.minepiano.velocity": "Скорость",
+  "gui.minepiano.master_volume": "Общая громкость",
+  "gui.minepiano.local_volume": "Локальная громкость",
+  "gui.minepiano.svc_distance": "Дальность голосового чата",
+  "gui.minepiano.soundfont": "SoundFont",
+  "gui.minepiano.preset": "Пресет",
+  "gui.minepiano.keymap": "Назначение клавиш"
+}
