@@ -5,7 +5,7 @@ Client-side Fabric piano mod for Minecraft 26.2 (Java 25).
 ## Requirements
 
 - Fabric Loader and Fabric API
-- [Simple Voice Chat](https://github.com/henkelmax/simple-voice-chat) 2.6.x is required for positional audio and recommended for the full experience. No server plugin is needed: Mine Piano sends audio through its client API. Without it, piano audio remains local.
+- [Simple Voice Chat](https://github.com/henkelmax/simple-voice-chat) 2.6.x is required to transmit piano audio to other players. Without it, piano audio remains local.
 
 ## Playing
 
@@ -23,7 +23,7 @@ Change piano key layout in settings. It is stored in `config/mine-piano/config.j
 
 ## Audio
 
-Mine Piano uses its own minimal SF2 sampler, not Minecraft noteblock sounds: 48 kHz mono, 20 ms blocks, pooled voices, and 0 allocations per block. Typical local latency is about 35–55 ms. Voice Chat frames use `createLocationalAudioChannel(...).play(short[960])`; Simple Voice Chat 2.6.x synchronously copies each frame before enqueueing.
+Mine Piano uses its own minimal SF2 sampler, not Minecraft noteblock sounds: 48 kHz mono, 20 ms blocks, pooled voices, and 0 allocations per block. Typical local latency is about 35–55 ms. Through Simple Voice Chat, piano frames are merged with the processed microphone and transmitted as the player's normal voice. Normal proximity, distance, group, and server relay rules apply.
 
 ## Build
 
@@ -52,6 +52,8 @@ Bundled asset is FreePats Upright Piano KW (small), CC0 1.0. See [THIRD_PARTY_LI
 
 - Client-only. Real-client runtime is not verified here because no OpenGL/Vulkan context is available.
 - Remote listeners receive piano through Voice Chat jitter buffer, adding expected 50–100 ms.
+- Voice transmission requires a working Simple Voice Chat client and running microphone thread. It is unavailable when voice chat is disabled or no usable microphone starts that thread.
+- Piano audio mixes with the real microphone and still transmits when the player is muted or push-to-talk is not held. Disable “Transmit to Voice Chat” in piano settings for local-only playback.
 - `javax.sound.sampled` may fall back to 44.1 kHz or clock-paced output when no audio device exists.
 - Bundled small SoundFont is not concert-grand quality.
 - Custom `.sf2` config path loads at startup; restart after changing it.

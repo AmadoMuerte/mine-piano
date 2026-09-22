@@ -2,6 +2,7 @@ package dev.amado.minepiano.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,11 +15,13 @@ public final class PianoConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public Map<String, Integer> keymap = defaultKeymap();
+    public int layoutVersion = 3;
     public int octave = 4;
     public int velocity = 100;
     public float masterVolume = 1.0F;
     public float localVolume = 1.0F;
     public float svcDistance = 16.0F;
+    public boolean transmitToVoiceChat = true;
     public String soundfont = "";
     public int preset = 0;
 
@@ -29,8 +32,22 @@ public final class PianoConfig {
     public static PianoConfig load(Path path) {
         try {
             if (Files.exists(path)) {
-                PianoConfig config = GSON.fromJson(Files.readString(path), PianoConfig.class);
-                if (config != null && config.valid()) return config;
+                String json = Files.readString(path);
+                PianoConfig config = GSON.fromJson(json, PianoConfig.class);
+                if (config != null && !JsonParser.parseString(json).getAsJsonObject().has("layoutVersion"))
+                    config.layoutVersion = 0;
+                if (config != null && config.valid()) {
+                    if (config.layoutVersion < 3) {
+                        config.keymap = defaultKeymap();
+                        config.layoutVersion = 3;
+                        try {
+                            config.save(path);
+                        } catch (IOException ignored) {
+                            // Migrated configuration remains usable if disk is unavailable.
+                        }
+                    }
+                    return config;
+                }
             }
         } catch (IOException | RuntimeException ignored) {
             // Defaults below replace unreadable or malformed files.
@@ -57,8 +74,14 @@ public final class PianoConfig {
 
     public static Map<String, Integer> defaultKeymap() {
         Map<String, Integer> map = new LinkedHashMap<>();
-        String[] keys = {"A", "W", "S", "E", "D", "F", "T", "G", "Y", "H", "U", "J", "K"};
-        for (int offset = 0; offset < keys.length; offset++) map.put(keys[offset], offset);
+        String[] keys = {"Z", "S", "X", "D", "C", "V", "G", "B", "H", "N", "J", "M", ",",
+                "Q", "2", "W", "3", "E", "R", "5", "T", "6", "Y", "7", "U", "I",
+                "9", "O", "0", "P", "[", "]", "\\", "L", ".", ";", "/"};
+        int[] offsets = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+                25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
+        for (int index = 0; index < keys.length; index++)
+            map.put(keys[index], offsets[index]);
         return map;
     }
 

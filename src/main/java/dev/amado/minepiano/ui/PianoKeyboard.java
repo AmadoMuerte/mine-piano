@@ -1,7 +1,7 @@
 package dev.amado.minepiano.ui;
 
 import dev.amado.minepiano.audio.PianoEngine;
-import java.util.Map;
+import dev.amado.minepiano.config.KeyMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -9,31 +9,31 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
-/** Two-octave mouse-playable keyboard. */
+/** Three-octave mouse-playable keyboard. */
 public final class PianoKeyboard extends AbstractWidget {
     private static final int[] BLACKS = {1, 3, 6, 8, 10};
     private static final String[] NAMES = {"C", "D", "E", "F", "G", "A", "B"};
     private final PianoEngine engine;
     private final int baseNote;
     private final int fallbackVelocity;
-    private final Map<String, Integer> keymap;
+    private final KeyMap keyMap;
     private final boolean showHints;
     private int mouseNote = -1;
 
     public PianoKeyboard(int x, int y, int width, int height, PianoEngine engine, int octave, int fallbackVelocity,
-                         Map<String, Integer> keymap, boolean showHints) {
+                          KeyMap keyMap, boolean showHints) {
         super(x, y, width, height, Component.translatable("gui.minepiano.keyboard"));
         this.engine = engine;
         baseNote = (octave + 1) * 12;
         this.fallbackVelocity = fallbackVelocity;
-        this.keymap = keymap;
+        this.keyMap = keyMap;
         this.showHints = showHints;
     }
 
     @Override
     protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         PianoScreen.roundedRect(graphics, getX() - 3, getY() - 3, getWidth() + 6, getHeight() + 6, 0xFF0D0C0B);
-        for (int white = 0; white < 14; white++) {
+        for (int white = 0; white < 21; white++) {
             int note = baseNote + whiteToSemitone(white);
             int left = whiteLeft(white);
             int right = whiteLeft(white + 1);
@@ -45,10 +45,10 @@ public final class PianoKeyboard extends AbstractWidget {
             drawHint(graphics, note - baseNote, (left + right) / 2, getBottom() - 28, 0xFF7A7167);
         }
         int blackHeight = getHeight() * 3 / 5;
-        for (int octave = 0; octave < 2; octave++) for (int black : BLACKS) {
+        for (int octave = 0; octave < 3; octave++) for (int black : BLACKS) {
             int white = octave * 7 + whiteBefore(black);
             int boundary = whiteLeft(white + 1);
-            int blackWidth = Math.max(5, getWidth() / 22);
+            int blackWidth = Math.max(5, getWidth() / 33);
             int left = boundary - blackWidth / 2;
             int note = baseNote + octave * 12 + black;
             graphics.fill(left - 1, getY(), left + blackWidth + 1, getY() + blackHeight + 2, 0xFF090909);
@@ -62,8 +62,8 @@ public final class PianoKeyboard extends AbstractWidget {
 
     private void drawHint(GuiGraphicsExtractor graphics, int offset, int centerX, int y, int color) {
         if (!showHints) return;
-        keymap.entrySet().stream().filter(entry -> entry.getValue() == offset).findFirst()
-                .ifPresent(entry -> graphics.centeredText(Minecraft.getInstance().font, entry.getKey(), centerX, y, color));
+        keyMap.nameForOffset(offset).ifPresent(name ->
+                graphics.centeredText(Minecraft.getInstance().font, name, centerX, y, color));
     }
 
     private void outlineNote(GuiGraphicsExtractor graphics, int note) {
@@ -74,11 +74,11 @@ public final class PianoKeyboard extends AbstractWidget {
             int octave = offset / 12;
             int semitone = Math.floorMod(offset, 12);
             int boundary = whiteLeft(octave * 7 + whiteBefore(semitone) + 1);
-            int width = Math.max(5, getWidth() / 22);
+            int width = Math.max(5, getWidth() / 33);
             graphics.outline(boundary - width / 2, getY(), width, getHeight() * 3 / 5, PianoScreen.ACCENT);
         } else {
             int white = semitoneToWhite(offset);
-            if (white >= 0 && white < 14)
+            if (white >= 0 && white < 21)
                 graphics.outline(whiteLeft(white), getY(), whiteLeft(white + 1) - whiteLeft(white), getHeight(), PianoScreen.ACCENT);
         }
     }
@@ -114,16 +114,16 @@ public final class PianoKeyboard extends AbstractWidget {
 
     private int noteAt(double x, double y) {
         if (!isMouseOver(x, y)) return -1;
-        if (y < getY() + getHeight() * 3 / 5) for (int octave = 0; octave < 2; octave++) for (int black : BLACKS) {
+        if (y < getY() + getHeight() * 3 / 5) for (int octave = 0; octave < 3; octave++) for (int black : BLACKS) {
             int boundary = whiteLeft(octave * 7 + whiteBefore(black) + 1);
-            int width = Math.max(5, getWidth() / 22);
+            int width = Math.max(5, getWidth() / 33);
             if (x >= boundary - width / 2 && x < boundary - width / 2 + width) return baseNote + octave * 12 + black;
         }
-        int white = Math.min(13, Math.max(0, (int) ((x - getX()) * 14 / getWidth())));
+        int white = Math.min(20, Math.max(0, (int) ((x - getX()) * 21 / getWidth())));
         return baseNote + whiteToSemitone(white);
     }
 
-    private int whiteLeft(int white) { return getX() + white * getWidth() / 14; }
+    private int whiteLeft(int white) { return getX() + white * getWidth() / 21; }
 
     private static int whiteToSemitone(int white) {
         return (white / 7) * 12 + new int[] {0, 2, 4, 5, 7, 9, 11}[white % 7];

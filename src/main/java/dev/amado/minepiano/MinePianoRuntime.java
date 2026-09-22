@@ -29,10 +29,6 @@ public final class MinePianoRuntime {
                 if (engine != null) engine.allNotesOff();
                 return;
             }
-            if (client.gui.screen() instanceof PianoScreen) {
-                VoiceChatOutputHolder.setLocation(client.player.getX(), client.player.getY(), client.player.getZ());
-                VoiceChatOutputHolder.setDistance(CONFIG.svcDistance);
-            }
         });
     }
 
@@ -47,7 +43,8 @@ public final class MinePianoRuntime {
                 }
             }
             engine = new PianoEngineImpl();
-            engine.addFrameConsumer(VoiceChatOutputHolder.getOutput());
+            VoiceChatOutputHolder.setEnabled(CONFIG.transmitToVoiceChat);
+            engine.addFrameConsumer(VoiceChatOutputHolder.getFeeder());
             engine.setMasterGain(CONFIG.masterVolume);
             engine.start();
         }

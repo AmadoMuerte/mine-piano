@@ -1,17 +1,11 @@
 package dev.amado.minepiano.voice;
 
-import de.maxhenkel.voicechat.api.VoicechatClientApi;
 import de.maxhenkel.voicechat.api.VoicechatPlugin;
 import de.maxhenkel.voicechat.api.events.ClientVoicechatConnectionEvent;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
+import de.maxhenkel.voicechat.api.events.MergeClientSoundEvent;
 
 public final class PianoVoicechatPlugin implements VoicechatPlugin {
-    private final VoiceChatOutput output = new VoiceChatOutput();
-
-    public PianoVoicechatPlugin() {
-        VoiceChatOutputHolder.install(output);
-    }
-
     @Override
     public String getPluginId() {
         return "minepiano";
@@ -20,14 +14,15 @@ public final class PianoVoicechatPlugin implements VoicechatPlugin {
     @Override
     public void registerEvents(EventRegistration registration) {
         registration.registerEvent(ClientVoicechatConnectionEvent.class, this::onConnection);
+        registration.registerEvent(MergeClientSoundEvent.class, this::onMergeSound);
     }
 
     private void onConnection(ClientVoicechatConnectionEvent event) {
-        VoicechatClientApi api = event.getVoicechat();
-        if (event.isConnected() && !api.isDisconnected() && !api.isDisabled()) {
-            output.connect(api);
-        } else {
-            output.disconnect();
-        }
+        if (!event.isConnected()) VoiceChatOutputHolder.clear();
+    }
+
+    private void onMergeSound(MergeClientSoundEvent event) {
+        short[] frame = VoiceChatOutputHolder.poll();
+        if (frame != null) event.mergeAudio(frame);
     }
 }

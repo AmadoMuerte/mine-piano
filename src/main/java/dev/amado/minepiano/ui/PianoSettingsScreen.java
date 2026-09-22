@@ -3,12 +3,14 @@ package dev.amado.minepiano.ui;
 import dev.amado.minepiano.audio.PianoEngine;
 import dev.amado.minepiano.config.KeyMap;
 import dev.amado.minepiano.config.PianoConfig;
+import dev.amado.minepiano.voice.VoiceChatOutputHolder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -60,8 +62,12 @@ public final class PianoSettingsScreen extends Screen {
         addRenderableWidget(new Stepper(left, y, contentWidth, 24, Component.translatable("gui.minepiano.master_volume"),
                 () -> Math.round(config.masterVolume * 100) + "%", amount -> setVolume(config.masterVolume + amount * .05F)));
         y += 28;
-        addRenderableWidget(new Stepper(left, y, contentWidth, 24, Component.translatable("gui.minepiano.svc_distance"),
-                () -> Math.round(config.svcDistance) + " m", amount -> config.svcDistance = Math.max(1, config.svcDistance + amount)));
+        addRenderableWidget(new Toggle(left, y, contentWidth, 24,
+                Component.translatable("gui.minepiano.transmit_voice_chat"), () -> config.transmitToVoiceChat,
+                () -> {
+                    config.transmitToVoiceChat = !config.transmitToVoiceChat;
+                    VoiceChatOutputHolder.setEnabled(config.transmitToVoiceChat);
+                }));
         y += 40;
 
         soundfont = addRenderableWidget(new EditBox(font, left, y, contentWidth, 22,
@@ -185,6 +191,37 @@ public final class PianoSettingsScreen extends Screen {
             else if (event.x() >= right - 96 && event.x() < right - 68) changed.accept(-1);
         }
 
+        @Override protected void updateWidgetNarration(NarrationElementOutput output) { defaultButtonNarrationText(output); }
+    }
+
+    private static final class Toggle extends AbstractWidget {
+        private final Component label;
+        private final BooleanSupplier value;
+        private final Runnable changed;
+
+        Toggle(int x, int y, int width, int height, Component label, BooleanSupplier value, Runnable changed) {
+            super(x, y, width, height, label);
+            this.label = label;
+            this.value = value;
+            this.changed = changed;
+        }
+
+        @Override
+        protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            boolean on = value.getAsBoolean();
+            PianoScreen.roundedBorder(graphics, getX(), getY(), getWidth(), getHeight(),
+                    isHoveredOrFocused() ? PianoScreen.ACCENT : PianoScreen.BORDER, PianoScreen.CONTROL);
+            int switchX = getRight() - 33;
+            int switchY = getY() + 5;
+            PianoScreen.roundedRect(graphics, switchX, switchY, 28, 14, on ? PianoScreen.ACCENT : 0xFF55514C);
+            PianoScreen.roundedRect(graphics, switchX + (on ? 16 : 2), switchY + 2, 10, 10, 0xFFF8F4EF);
+            Component state = Component.translatable(on ? "gui.minepiano.on" : "gui.minepiano.off");
+            graphics.text(Minecraft.getInstance().font, label, getX() + 8, getY() + 8,
+                    on ? PianoScreen.ACCENT : PianoScreen.TEXT, false);
+            setMessage(label.copy().append(": ").append(state));
+        }
+
+        @Override public void onClick(MouseButtonEvent event, boolean doubleClick) { changed.run(); }
         @Override protected void updateWidgetNarration(NarrationElementOutput output) { defaultButtonNarrationText(output); }
     }
 

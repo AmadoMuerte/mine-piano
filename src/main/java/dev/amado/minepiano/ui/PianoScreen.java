@@ -6,7 +6,6 @@ import dev.amado.minepiano.config.PianoConfig;
 import dev.amado.minepiano.input.PianoInput;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.function.BooleanSupplier;
@@ -32,11 +31,11 @@ public final class PianoScreen extends Screen {
 
     private final PianoEngine engine;
     private final PianoConfig config;
+    private final KeyMap keyMap;
     private final PianoInput input;
     private final Map<Integer, Integer> heldNotes = new HashMap<>();
     private boolean showHints;
     private boolean controlsCollapsed;
-    private boolean hintsKeyHeld;
     private int panelX;
     private int panelY;
     private int panelWidth;
@@ -47,7 +46,8 @@ public final class PianoScreen extends Screen {
         super(Component.translatable("gui.minepiano.title"));
         this.engine = engine;
         this.config = config;
-        input = new PianoInput(new KeyMap(config), config.octave);
+        keyMap = new KeyMap(config);
+        input = new PianoInput(keyMap, config.octave);
     }
 
     @Override
@@ -67,7 +67,7 @@ public final class PianoScreen extends Screen {
                 Component.translatable("gui.minepiano.sustain"), input::sustain, this::toggleSustain, true));
 
         addRenderableWidget(new PianoKeyboard(panelX + 12, panelY + 54, panelWidth - 24, keyboardHeight,
-                engine, input.octave(), config.velocity, config.keymap, showHints));
+                engine, input.octave(), config.velocity, keyMap, showHints));
 
         int barY = keyboardBottom + 7;
         if (!controlsCollapsed) {
@@ -118,21 +118,13 @@ public final class PianoScreen extends Screen {
             onClose();
             return true;
         }
-        if (event.key() == GLFW.GLFW_KEY_Q) {
-            if (!hintsKeyHeld) toggleHints();
-            hintsKeyHeld = true;
-            return true;
-        }
-        if (event.key() == GLFW.GLFW_KEY_Z || event.key() == GLFW.GLFW_KEY_X
-                || event.key() == GLFW.GLFW_KEY_SPACE) {
+        if (event.key() == GLFW.GLFW_KEY_SPACE) {
             input.press(event.key());
-            if (event.key() == GLFW.GLFW_KEY_SPACE) engine.setSustain(input.sustain());
-            else syncControls();
+            engine.setSustain(input.sustain());
             return true;
         }
-        String name = GLFW.glfwGetKeyName(event.key(), event.scancode());
-        Integer offset = name == null ? null : config.keymap.get(name.toUpperCase(Locale.ROOT));
-        int note = offset == null ? -1 : (input.octave() + 1) * 12 + offset;
+        OptionalInt offset = keyMap.offset(event.key());
+        int note = offset.isEmpty() ? -1 : (input.octave() + 1) * 12 + offset.getAsInt();
         if (note >= 0 && note <= 127) {
             if (heldNotes.putIfAbsent(event.key(), note) == null) engine.noteOn(note, config.velocity);
             return true;
@@ -142,10 +134,6 @@ public final class PianoScreen extends Screen {
 
     @Override
     public boolean keyReleased(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_Q) {
-            hintsKeyHeld = false;
-            return true;
-        }
         Integer note = heldNotes.remove(event.key());
         if (note != null) {
             engine.noteOff(note);
@@ -184,7 +172,6 @@ public final class PianoScreen extends Screen {
         heldNotes.clear();
         input.heldKeys().forEach(input::release);
         if (input.sustain()) input.toggleSustain();
-        hintsKeyHeld = false;
     }
 
     private void octaveDown() {

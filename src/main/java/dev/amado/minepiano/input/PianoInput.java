@@ -23,14 +23,6 @@ public final class PianoInput {
 
     public OptionalInt press(int keyCode) {
         if (!heldKeys.add(keyCode)) return OptionalInt.empty();
-        if (keyCode == GLFW.GLFW_KEY_Z) {
-            octaveDown();
-            return OptionalInt.empty();
-        }
-        if (keyCode == GLFW.GLFW_KEY_X) {
-            octaveUp();
-            return OptionalInt.empty();
-        }
         if (keyCode == GLFW.GLFW_KEY_SPACE) {
             toggleSustain();
             return OptionalInt.empty();
