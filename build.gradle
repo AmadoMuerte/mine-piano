@@ -1,0 +1,113 @@
+import java.nio.file.Files
+import java.security.MessageDigest
+
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.20'
+}
+
+group = 'dev.amado'
+version = project.mod_version
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.maxhenkel.de/repository/public' }
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:26.2'
+    implementation 'net.fabricmc:fabric-loader:0.19.5'
+    implementation 'net.fabricmc.fabric-api:fabric-api:0.161.0+26.2'
+    compileOnly 'de.maxhenkel.voicechat:voicechat-api:2.6.24'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+}
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+def soundfontResources = layout.buildDirectory.dir('generated/soundfont')
+// FreePats Upright Piano by Gonzalo & Roberto, CC0 1.0.
+def archiveSha256 = '3bd025e7c2ffa9e6f3f99215ce383c9cebbac991cfbf9be1453cdb4328ec3492' // UprightPianoKW-small-SF2-20190703.7z
+def soundfontSha256 = 'cf2a98eb38a32c4954b4b6e2caae4112d62dd8e892eceefdd7942b0e7d01ac2f' // UprightPianoKW-small-20190703.sf2
+def sha256 = { File file ->
+    MessageDigest digest = MessageDigest.getInstance('SHA-256')
+    file.withInputStream { input ->
+        byte[] buffer = new byte[8192]
+        for (int read; (read = input.read(buffer)) != -1;) digest.update(buffer, 0, read)
+    }
+    digest.digest().collect { String.format('%02x', it) }.join()
+}
+
+tasks.register('prepareSoundfont') {
+    group = 'build'
+    description = 'Downloads the CC0 FreePats Upright Piano SoundFont and packages it.'
+    outputs.file(soundfontResources.map { it.file('assets/minepiano/soundfont/piano.sf2') })
+
+    doLast {
+        File output = soundfontResources.get().file('assets/minepiano/soundfont/piano.sf2').asFile
+        output.parentFile.mkdirs()
+        File source = project.findProperty('soundfont') ? file(project.property('soundfont')) : null
+
+        if (source == null) {
+            File archive = layout.buildDirectory.file('soundfont/UprightPianoKW-small-SF2-20190703.7z').get().asFile
+            archive.parentFile.mkdirs()
+            if (!archive.exists() || sha256(archive) != archiveSha256) {
+                URLConnection connection = new URL('https://freepats.zenvoid.org/Piano/UprightPianoKW/UprightPianoKW-small-SF2-20190703.7z').openConnection()
+                connection.setRequestProperty('User-Agent', 'Mozilla/5.0')
+                connection.getInputStream().withCloseable { input -> archive.withOutputStream { it << input } }
+            }
+            if (sha256(archive) != archiveSha256) throw new GradleException('SoundFont archive SHA-256 mismatch')
+
+            File extracted = layout.buildDirectory.dir('soundfont/extracted').get().asFile
+            delete extracted
+            extracted.mkdirs()
+            if (!System.getenv('PATH').tokenize(File.pathSeparator).any { new File(it, '7z').canExecute() }) {
+                throw new GradleException('run inside nix develop (p7zip)')
+            }
+            Process process = new ProcessBuilder('7z', 'x', '-y', archive.toString(), "-o${extracted}").inheritIO().start()
+            if (process.waitFor() != 0) throw new GradleException('7z extraction failed')
+            def soundfonts = fileTree(extracted) { include '**/*.sf2' }.files
+            if (soundfonts.size() != 1) throw new GradleException("Expected exactly one .sf2, found ${soundfonts.size()}")
+            source = soundfonts.first()
+        }
+
+        if (!source.isFile()) throw new GradleException("SoundFont not found: ${source}")
+        if (sha256(source) != soundfontSha256) throw new GradleException('SoundFont SHA-256 mismatch')
+        copy { from source; into output.parentFile; rename { 'piano.sf2' } }
+    }
+}
+
+sourceSets.main.resources.srcDir(soundfontResources)
+tasks.named('processResources') { dependsOn 'prepareSoundfont' }
+
+tasks.register('downloadDevMods') {
+    group = 'fabric'
+    description = 'Downloads Simple Voice Chat for development runs.'
+    doLast {
+        File output = file('run/mods/voicechat-fabric-2.6.24+26.2.jar')
+        output.parentFile.mkdirs()
+        if (!output.exists()) {
+            new URL('https://cdn.modrinth.com/data/9eGKb6K1/versions/Ls232EsW/voicechat-fabric-2.6.24%2B26.2.jar').withInputStream { input -> output.withOutputStream { it << input } }
+        }
+        String actual = MessageDigest.getInstance('SHA-512').digest(Files.readAllBytes(output.toPath())).collect { String.format('%02x', it) }.join()
+        if (actual != '592c66fafdf00d9b9b23f23da8dbfd8bb996c2f639b8d55c2028a9fd55d79a7df67f1d23e1ef11a52919baa6b946a65190f805f884f0d50492db10d8bcd83db0') {
+            throw new GradleException('Simple Voice Chat SHA-512 mismatch')
+        }
+    }
+}

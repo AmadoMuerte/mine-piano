@@ -1,0 +1,8 @@
+.direnv/
+.gradle/
+build/
+run/
+*.log
+/out/
+.idea/
+*.iml
