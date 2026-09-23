@@ -10,7 +10,6 @@ import java.nio.file.Path;
 
 /** Preloaded SoundFont bank with allocation-free pooled voices. */
 public final class Sf2SoundBank implements SoundBank {
-    public static final String PATH_PROPERTY = "minepiano.soundfont.path";
     private static final String RESOURCE = "assets/minepiano/soundfont/piano.sf2";
     private static final int POOL_SIZE = 128;
     private final Sf2Zone[] zones;
@@ -58,7 +57,8 @@ public final class Sf2SoundBank implements SoundBank {
 
     /** Builds a fresh voice pool while sharing immutable decoded samples. */
     public Sf2SoundBank withPreset(PianoPreset preset) {
-        if (preset.soundfontResource() != null) return new Sf2SoundBank(loadResource(preset.soundfontResource(), 0, 0), preset);
+        if (preset.soundfontResource() != null) return new Sf2SoundBank(loadResource(
+                preset.soundfontResource(), preset.bank(), preset.program()), preset);
         return new Sf2SoundBank(zones, preset);
     }
 
@@ -99,8 +99,6 @@ public final class Sf2SoundBank implements SoundBank {
     }
 
     private static Sf2Parser.Parsed loadDefault(int bank, int program) {
-        String override = System.getProperty(PATH_PROPERTY);
-        if (override != null && !override.isBlank()) return parse(Path.of(override), bank, program);
         try (InputStream input = Sf2SoundBank.class.getClassLoader().getResourceAsStream(RESOURCE)) {
             if (input == null) throw new IllegalStateException("Missing classpath resource " + RESOURCE);
             return new Sf2Parser().parse(input, bank, program);
@@ -166,7 +164,8 @@ public final class Sf2SoundBank implements SoundBank {
             layerCount = 0;
             released = false;
             lowPassState = 0.0f;
-            voiceGain = preset.gain() * (float) Math.pow(velocity / 127.0, preset.velocityExponent());
+            voiceGain = preset.gain() * (float) Math.pow(velocity / 127.0,
+                    PianoPreset.DEFAULT_VELOCITY_EXPONENT);
             for (Sf2Zone zone : zones) {
                 if (!matches(zone, midi, velocity)) continue;
                 int i = layerCount++;

@@ -17,7 +17,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -25,19 +24,17 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
-/** Mouse-driven values, SoundFont path, and key rebinding. */
+/** Audio controls and key rebinding. */
 public final class PianoSettingsScreen extends Screen {
     private final Screen parent;
     private final PianoConfig config;
     private final PianoEngine engine;
     private final List<String> keys;
-    private EditBox soundfont;
     private int binding = -1;
     private int panelX;
     private int panelY;
     private int panelWidth;
     private int panelHeight;
-    private int soundfontLabelY = -1;
     private int keymapLabelY = -1;
 
     public PianoSettingsScreen(Screen parent, PianoConfig config, PianoEngine engine) {
@@ -51,8 +48,7 @@ public final class PianoSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        soundfont = null;
-        soundfontLabelY = keymapLabelY = -1;
+        keymapLabelY = -1;
         panelWidth = Math.min(640, Math.max(1, width - 10));
         panelHeight = Math.min(390, Math.max(1, height - 10));
         panelX = (width - panelWidth) / 2;
@@ -63,29 +59,18 @@ public final class PianoSettingsScreen extends Screen {
         int doneY = layout.doneY();
         boolean controlsFit = contentWidth >= 120;
 
-        if (controlsFit && fits(layout.velocityY(), 24, doneY)) addRenderableWidget(new Stepper(left, layout.velocityY(), contentWidth, 24, Component.translatable("gui.minepiano.velocity"),
-                () -> Integer.toString(config.velocity), amount -> config.velocity = clamp(config.velocity + amount * 5, 0, 127)));
         if (controlsFit && fits(layout.volumeY(), 24, doneY)) addRenderableWidget(new Stepper(left, layout.volumeY(), contentWidth, 24, Component.translatable("gui.minepiano.master_volume"),
                 () -> Math.round(config.masterVolume * 100) + "%", amount -> setVolume(config.masterVolume + amount * .05F)));
         if (controlsFit && fits(layout.presetY(), 24, doneY)) addRenderableWidget(new Stepper(left, layout.presetY(), contentWidth, 24,
                 Component.translatable("gui.minepiano.preset"),
                 () -> Component.translatable(PianoPreset.fromName(config.presetName).translationKey()).getString(),
-                this::changePreset));
+                amount -> changePreset(config, engine, amount)));
         if (controlsFit && fits(layout.voiceChatY(), 24, doneY)) addRenderableWidget(new Toggle(left, layout.voiceChatY(), contentWidth, 24,
                 Component.translatable("gui.minepiano.transmit_voice_chat"), () -> config.transmitToVoiceChat,
                 () -> {
                     config.transmitToVoiceChat = !config.transmitToVoiceChat;
                     VoiceChatOutputHolder.setEnabled(config.transmitToVoiceChat);
                 }));
-        if (fits(layout.soundfontFieldY(), 22, doneY)) {
-            soundfontLabelY = layout.soundfontLabelY();
-            soundfont = addRenderableWidget(new EditBox(font, left, layout.soundfontFieldY(), contentWidth, 22,
-                    Component.translatable("gui.minepiano.soundfont")));
-            soundfont.setValue(config.soundfont);
-            soundfont.setResponder(value -> config.soundfont = value);
-            soundfont.setHint(Component.translatable("gui.minepiano.soundfont_hint"));
-        }
-
         int availableRows = Math.max(0, (doneY - layout.bindingsY() - 4) / 20);
         if (availableRows > 0) {
             keymapLabelY = layout.keymapLabelY();
@@ -113,8 +98,6 @@ public final class PianoSettingsScreen extends Screen {
                 PianoScreen.BORDER, PianoScreen.PANEL);
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         graphics.text(font, title.copy().withStyle(ChatFormatting.BOLD), panelX + 14, panelY + 13, PianoScreen.TEXT, false);
-        if (soundfontLabelY >= 0) graphics.text(font, Component.translatable("gui.minepiano.soundfont"),
-                panelX + 14, soundfontLabelY, PianoScreen.MUTED, false);
         if (keymapLabelY >= 0) graphics.text(font, Component.translatable("gui.minepiano.keymap"),
                 panelX + 14, keymapLabelY, PianoScreen.MUTED, false);
     }
@@ -152,7 +135,6 @@ public final class PianoSettingsScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (soundfont != null) config.soundfont = soundfont.getValue();
         try { config.save(); } catch (IOException ignored) { }
         minecraft.gui.setScreen(parent);
     }
@@ -162,7 +144,7 @@ public final class PianoSettingsScreen extends Screen {
         engine.setMasterGain(config.masterVolume);
     }
 
-    private void changePreset(int amount) {
+    static void changePreset(PianoConfig config, PianoEngine engine, int amount) {
         PianoPreset preset = PianoPreset.fromName(config.presetName).offset(amount);
         config.presetName = preset.name();
         engine.setPreset(preset);
@@ -174,24 +156,16 @@ public final class PianoSettingsScreen extends Screen {
 
     static Layout layout(int panelY, int panelHeight) {
         int cursor = panelY + 38;
-        int velocity = cursor; cursor += 28;
         int volume = cursor; cursor += 28;
         int preset = cursor; cursor += 28;
         int voiceChat = cursor; cursor += 28;
-        int soundfontLabel = cursor;
-        int soundfontField = cursor + 12; cursor += 38;
         int keymapLabel = cursor;
-        return new Layout(velocity, volume, preset, voiceChat, soundfontLabel, soundfontField,
-                keymapLabel, keymapLabel + 13, panelY + panelHeight - 34);
+        return new Layout(volume, preset, voiceChat, keymapLabel, keymapLabel + 13,
+                panelY + panelHeight - 34);
     }
 
-    static record Layout(int velocityY, int volumeY, int presetY, int voiceChatY,
-                         int soundfontLabelY, int soundfontFieldY, int keymapLabelY,
+    static record Layout(int volumeY, int presetY, int voiceChatY, int keymapLabelY,
                          int bindingsY, int doneY) { }
-
-    private static int clamp(int value, int minimum, int maximum) {
-        return Math.max(minimum, Math.min(maximum, value));
-    }
 
     private static final class Stepper extends AbstractWidget {
         private final Component label;

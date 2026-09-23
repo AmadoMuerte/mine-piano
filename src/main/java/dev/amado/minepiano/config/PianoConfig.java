@@ -18,13 +18,11 @@ public final class PianoConfig {
     public Map<String, Integer> keymap = defaultKeymap();
     public int layoutVersion = 3;
     public int octave = 4;
-    public int velocity = 100;
     public float masterVolume = 1.0F;
     public float localVolume = 1.0F;
     public float svcDistance = 16.0F;
     public boolean transmitToVoiceChat = true;
     public boolean sustain = false;
-    public String soundfont = "";
     public String presetName = PianoPreset.REALISTIC.name();
 
     public static PianoConfig load() {
@@ -101,8 +99,6 @@ public final class PianoConfig {
     private boolean valid() {
         return keymap != null
             && keymap.entrySet().stream().allMatch(entry -> entry.getKey() != null && entry.getValue() != null)
-            && velocity >= 0 && velocity <= 127
-            && soundfont != null
             && presetName != null;
     }
 }

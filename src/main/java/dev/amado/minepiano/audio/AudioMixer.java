@@ -87,6 +87,8 @@ public final class AudioMixer {
         this.soundBank = java.util.Objects.requireNonNull(soundBank);
     }
 
+    SoundBank soundBank() { return soundBank; }
+
     private void run() {
         while (running) renderBlock();
     }

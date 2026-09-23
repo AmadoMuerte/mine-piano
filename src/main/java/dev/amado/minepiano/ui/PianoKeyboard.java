@@ -15,17 +15,15 @@ public final class PianoKeyboard extends AbstractWidget {
     private static final String[] NAMES = {"C", "D", "E", "F", "G", "A", "B"};
     private final PianoEngine engine;
     private final int baseNote;
-    private final int fallbackVelocity;
     private final KeyMap keyMap;
     private final boolean showHints;
     private int mouseNote = -1;
 
-    public PianoKeyboard(int x, int y, int width, int height, PianoEngine engine, int octave, int fallbackVelocity,
+    public PianoKeyboard(int x, int y, int width, int height, PianoEngine engine, int octave,
                           KeyMap keyMap, boolean showHints) {
         super(x, y, width, height, Component.translatable("gui.minepiano.keyboard"));
         this.engine = engine;
         baseNote = (octave + 1) * 12;
-        this.fallbackVelocity = fallbackVelocity;
         this.keyMap = keyMap;
         this.showHints = showHints;
     }
@@ -40,9 +38,13 @@ public final class PianoKeyboard extends AbstractWidget {
             int color = engine.isNoteActive(note) ? 0xFFFFC46E : 0xFFF3F0EA;
             graphics.fill(left, getY(), right - 1, getBottom(), color);
             graphics.fill(right - 1, getY(), right, getBottom(), 0xFF5B5650);
-            String name = NAMES[white % 7];
-            graphics.centeredText(Minecraft.getInstance().font, name, (left + right) / 2, getBottom() - 14, 0xFF413E39);
-            drawHint(graphics, note - baseNote, (left + right) / 2, getBottom() - 28, 0xFF7A7167);
+            if (getHeight() >= 18) {
+                String name = NAMES[white % 7];
+                graphics.centeredText(Minecraft.getInstance().font, name, (left + right) / 2,
+                        getBottom() - 14, 0xFF413E39);
+            }
+            if (getHeight() >= 32)
+                drawHint(graphics, note - baseNote, (left + right) / 2, getBottom() - 28, 0xFF7A7167);
         }
         int blackHeight = getHeight() * 3 / 5;
         for (int octave = 0; octave < 3; octave++) for (int black : BLACKS) {
@@ -54,7 +56,8 @@ public final class PianoKeyboard extends AbstractWidget {
             graphics.fill(left - 1, getY(), left + blackWidth + 1, getY() + blackHeight + 2, 0xFF090909);
             graphics.fill(left, getY(), left + blackWidth, getY() + blackHeight,
                     engine.isNoteActive(note) ? PianoScreen.ACCENT : 0xFF22211F);
-            drawHint(graphics, note - baseNote, left + blackWidth / 2, getY() + blackHeight - 15, 0xFFD4CDC5);
+            if (blackHeight >= 18)
+                drawHint(graphics, note - baseNote, left + blackWidth / 2, getY() + blackHeight - 15, 0xFFD4CDC5);
         }
         int hovered = noteAt(mouseX, mouseY);
         if (hovered >= 0) outlineNote(graphics, hovered);
@@ -102,9 +105,7 @@ public final class PianoKeyboard extends AbstractWidget {
         int note = noteAt(x, y);
         if (note < 0 || note == mouseNote) return;
         mouseNote = note;
-        int velocity = getHeight() <= 1 ? fallbackVelocity : Math.max(1, Math.min(127,
-                (int) (127 - (y - getY()) * 80 / getHeight())));
-        engine.noteOn(note, velocity);
+        engine.noteOn(note, PianoScreen.FIXED_VELOCITY);
     }
 
     private void releaseMouse() {

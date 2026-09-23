@@ -183,8 +183,10 @@ public final class Sf2Parser {
             long start = u32(data, p + 20), end = u32(data, p + 24);
             long loopStart = u32(data, p + 28), loopEnd = u32(data, p + 32);
             long rate = u32(data, p + 36);
-            require(start < end && end <= pcm.length && loopStart >= start && loopStart <= loopEnd && loopEnd <= end
-                    && rate > 0 && rate <= Integer.MAX_VALUE, "Invalid sample header");
+            require(start < end && end <= pcm.length && rate > 0 && rate <= Integer.MAX_VALUE,
+                    "Invalid sample header");
+            loopStart = Math.max(start, Math.min(loopStart, end));
+            loopEnd = Math.max(loopStart, Math.min(loopEnd, end));
             samples[i] = new Sf2Sample(name(data, p), pcm, (int) start, (int) end,
                     (int) loopStart, (int) loopEnd, (int) rate, data[p + 40] & 255, data[p + 41]);
         }

@@ -82,6 +82,11 @@ public final class PianoEngineImpl implements PianoEngine {
         mixer.setSoundBank(sourceBank.withPreset(preset));
     }
 
+    PianoPreset currentPreset() {
+        SoundBank bank = mixer.soundBank();
+        return bank instanceof Sf2SoundBank sf2 ? sf2.preset() : null;
+    }
+
     @Override
     public boolean isNoteActive(int midi) {
         checkMidi(midi);

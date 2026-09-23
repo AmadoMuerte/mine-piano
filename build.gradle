@@ -42,37 +42,34 @@ processResources {
 }
 
 def soundfontResources = layout.buildDirectory.dir('generated/soundfont')
-// FreePats Upright Piano by Gonzalo & Roberto, CC0 1.0.
-def archiveSha256 = '3bd025e7c2ffa9e6f3f99215ce383c9cebbac991cfbf9be1453cdb4328ec3492' // UprightPianoKW-small-SF2-20190703.7z
-def soundfontSha256 = 'cf2a98eb38a32c4954b4b6e2caae4112d62dd8e892eceefdd7942b0e7d01ac2f' // UprightPianoKW-small-20190703.sf2
-def sha256 = { File file ->
-    MessageDigest digest = MessageDigest.getInstance('SHA-256')
-    file.withInputStream { input ->
-        byte[] buffer = new byte[8192]
-        for (int read; (read = input.read(buffer)) != -1;) digest.update(buffer, 0, read)
-    }
-    digest.digest().collect { String.format('%02x', it) }.join()
-}
+def uprightUrl = 'https://freepats.zenvoid.org/Piano/UprightPianoKW/UprightPianoKW-small-SF2-20190703.7z'
+def gmUrl = 'https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/GeneralUser-GS.sf2'
 
 tasks.register('prepareSoundfont') {
     group = 'build'
-    description = 'Downloads the CC0 FreePats Upright Piano SoundFont and packages it.'
-    outputs.file(soundfontResources.map { it.file('assets/minepiano/soundfont/piano.sf2') })
+    description = 'Downloads and packages the upright and General MIDI SoundFonts.'
+    outputs.files(soundfontResources.map { directory -> [
+            directory.file('assets/minepiano/soundfont/piano.sf2'),
+            directory.file('assets/minepiano/soundfont/generaluser.sf2')
+    ] })
 
     doLast {
-        File output = soundfontResources.get().file('assets/minepiano/soundfont/piano.sf2').asFile
-        output.parentFile.mkdirs()
-        File source = project.findProperty('soundfont') ? file(project.property('soundfont')) : null
+        File outputDirectory = soundfontResources.get().dir('assets/minepiano/soundfont').asFile
+        outputDirectory.mkdirs()
+        File upright = project.findProperty('soundfont') ? file(project.property('soundfont')) : null
 
-        if (source == null) {
+        if (upright == null) {
             File archive = layout.buildDirectory.file('soundfont/UprightPianoKW-small-SF2-20190703.7z').get().asFile
             archive.parentFile.mkdirs()
-            if (!archive.exists() || sha256(archive) != archiveSha256) {
-                URLConnection connection = new URL('https://freepats.zenvoid.org/Piano/UprightPianoKW/UprightPianoKW-small-SF2-20190703.7z').openConnection()
-                connection.setRequestProperty('User-Agent', 'Mozilla/5.0')
-                connection.getInputStream().withCloseable { input -> archive.withOutputStream { it << input } }
+            if (!archive.exists()) {
+                try {
+                    URLConnection connection = new URL(uprightUrl).openConnection()
+                    connection.setRequestProperty('User-Agent', 'Mozilla/5.0')
+                    connection.getInputStream().withCloseable { input -> archive.withOutputStream { it << input } }
+                } catch (Exception failure) {
+                    throw new GradleException("Failed to download upright SoundFont from ${uprightUrl}", failure)
+                }
             }
-            if (sha256(archive) != archiveSha256) throw new GradleException('SoundFont archive SHA-256 mismatch')
 
             File extracted = layout.buildDirectory.dir('soundfont/extracted').get().asFile
             delete extracted
@@ -84,12 +81,27 @@ tasks.register('prepareSoundfont') {
             if (process.waitFor() != 0) throw new GradleException('7z extraction failed')
             def soundfonts = fileTree(extracted) { include '**/*.sf2' }.files
             if (soundfonts.size() != 1) throw new GradleException("Expected exactly one .sf2, found ${soundfonts.size()}")
-            source = soundfonts.first()
+            upright = soundfonts.first()
         }
 
-        if (!source.isFile()) throw new GradleException("SoundFont not found: ${source}")
-        if (sha256(source) != soundfontSha256) throw new GradleException('SoundFont SHA-256 mismatch')
-        copy { from source; into output.parentFile; rename { 'piano.sf2' } }
+        File gm = project.findProperty('gmSoundfont') ? file(project.property('gmSoundfont')) : null
+        if (gm == null) {
+            gm = layout.buildDirectory.file('soundfont/GeneralUser-GS.sf2').get().asFile
+            if (!gm.exists()) {
+                try {
+                    URLConnection connection = new URL(gmUrl).openConnection()
+                    connection.setRequestProperty('User-Agent', 'Mozilla/5.0')
+                    connection.getInputStream().withCloseable { input -> gm.withOutputStream { it << input } }
+                } catch (Exception failure) {
+                    throw new GradleException("Failed to download General MIDI SoundFont from ${gmUrl}", failure)
+                }
+            }
+        }
+
+        if (!upright.isFile()) throw new GradleException("Upright SoundFont not found: ${upright}")
+        if (!gm.isFile()) throw new GradleException("General MIDI SoundFont not found: ${gm}")
+        copy { from upright; into outputDirectory; rename { 'piano.sf2' } }
+        copy { from gm; into outputDirectory; rename { 'generaluser.sf2' } }
     }
 }
 

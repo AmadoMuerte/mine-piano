@@ -25,26 +25,24 @@ Change piano key layout in settings. It is stored in `config/mine-piano/config.j
 
 Mine Piano uses its own minimal SF2 sampler, not Minecraft noteblock sounds: 48 kHz mono, 20 ms blocks, pooled voices, and 0 allocations per block. Typical local latency is about 35–55 ms. Through Simple Voice Chat, piano frames are merged with the processed microphone and transmitted as the player's normal voice. Normal proximity, distance, group, and server relay rules apply.
 
-Velocity scales amplitude with a squared response: `(velocity / 127)^2`. This follows the energy-like response used by many MIDI instruments, keeps low velocities controllable, and makes medium and high strikes clearly distinct.
+Keyboard and mouse notes use one fixed internal strike level. MIDI velocity remains internal to the sampler API.
 
 ### Presets
 
-Presets switch live and are saved in `config/mine-piano/config.json`. They share the bundled CC0 Upright Piano samples and change voicing without adding per-sample allocations:
+Presets switch live for new notes and are saved in `config/mine-piano/config.json`. Existing notes finish naturally. Instrument selection is combined with gain, attack, release, sustain, detune, and low-pass voicing:
 
-| Preset | Character |
-| --- | --- |
-| Realistic | Neutral response and envelope |
-| Warm | Softer top end, gentler attack, longer release |
-| Bright | Fast attack, open top end, stronger touch response |
-| Melancholic | Slow attack, subdued sustain, long dark tail |
-| Soft | Quiet trim, slow attack, light touch response |
-| Dark | Strong low-pass filtering and longer release |
-| Music Box | Very fast attack, short tail, low sustain, sharp tuning |
-| Detuned | Alternating per-layer detune for an out-of-tune character |
-| Concert | Full sustain and the longest release |
-| Vintage | Filtered, loose tuning, compressed touch response |
-
-FreePats did not provide another small SF2 variant whose exact archive, extracted-file hashes, permissive license, and combined packaged size could all be verified from this build host. Therefore all ten presets intentionally use voicing variations of the pinned bundled instrument rather than silently increasing the artifact or shipping an unverified asset.
+| Preset | Instrument | Bank / program | Voicing: gain / attack / release / sustain / detune / low-pass |
+| --- | --- | --- | --- |
+| Realistic | FreePats upright | 0 / 0 | 0.82 / 1.00 / 1.00 / 1.00 / 0.0 / 0.00 |
+| Grand | GeneralUser acoustic grand | 0 / 0 | 0.82 / 1.00 / 1.00 / 1.00 / 0.0 / 0.00 |
+| Bright | GeneralUser bright acoustic | 0 / 1 | 0.80 / 0.90 / 0.90 / 1.00 / 0.0 / 0.00 |
+| Electric | GeneralUser electric piano | 0 / 4 | 0.88 / 0.85 / 1.15 / 0.95 / 0.0 / 0.05 |
+| Harpsichord | GeneralUser harpsichord | 0 / 6 | 0.76 / 0.55 / 0.55 / 0.70 / 0.0 / 0.00 |
+| Music Box | GeneralUser music box | 0 / 10 | 0.72 / 0.65 / 0.90 / 0.75 / 0.0 / 0.00 |
+| Vibraphone | GeneralUser vibraphone | 0 / 11 | 0.78 / 0.90 / 1.30 / 0.92 / 0.0 / 0.04 |
+| Organ | GeneralUser church organ | 0 / 19 | 0.70 / 0.70 / 1.10 / 1.00 / 0.0 / 0.02 |
+| Melancholic | FreePats upright | 0 / 0 | 0.78 / 1.35 / 1.75 / 0.72 / -4.0 / 0.28 |
+| Concert | GeneralUser acoustic grand | 0 / 0 | 0.86 / 0.92 / 2.40 / 1.06 / 1.5 / 0.03 |
 
 ## Build
 
@@ -58,7 +56,7 @@ direnv allow
 Nix flake provides JDK 25 and p7zip. Gradle wrapper is 9.5.1. First build downloads SoundFont archive; build offline with:
 
 ```sh
-./gradlew build -Psoundfont=/path/to/piano.sf2
+./gradlew build -Psoundfont=/path/to/upright.sf2 -PgmSoundfont=/path/to/GeneralUser-GS.sf2
 ```
 
 `downloadDevMods` downloads Simple Voice Chat into `run/mods` for development.
@@ -67,7 +65,12 @@ Nix flake provides JDK 25 and p7zip. Gradle wrapper is 9.5.1. First build downlo
 
 No third-party Java runtime libraries are bundled. Only compile-time dependency is Simple Voice Chat API (`de.maxhenkel.voicechat:voicechat-api:2.6.24`), not bundled. Instrument is self-written SF2 sampler.
 
-Bundled asset is FreePats Upright Piano KW (small), CC0 1.0. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Bundled assets:
+
+- FreePats Upright Piano KW (small): https://freepats.zenvoid.org/Piano/UprightPianoKW/UprightPianoKW-small-SF2-20190703.7z
+- GeneralUser GS: https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/GeneralUser-GS.sf2
+
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 ## Limitations
 
@@ -76,6 +79,5 @@ Bundled asset is FreePats Upright Piano KW (small), CC0 1.0. See [THIRD_PARTY_LI
 - Voice transmission requires a working Simple Voice Chat client and running microphone thread. It is unavailable when voice chat is disabled or no usable microphone starts that thread.
 - Piano audio mixes with the real microphone and still transmits when the player is muted or push-to-talk is not held. Disable “Transmit to Voice Chat” in piano settings for local-only playback.
 - `javax.sound.sampled` may fall back to 44.1 kHz or clock-paced output when no audio device exists.
-- Bundled small SoundFont is not concert-grand quality.
-- Custom `.sf2` config path loads at startup; presets still switch its voicing live.
+- Bundled instruments favor moderate artifact size over studio-library detail.
 - No piano roll, sequencer, MIDI, or song saving.

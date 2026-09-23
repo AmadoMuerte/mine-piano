@@ -8,6 +8,7 @@ import java.io.InputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Sf2SoundBankTest {
@@ -23,11 +24,30 @@ class Sf2SoundBankTest {
     }
 
     @Test
-    void presetRoundTripsAndChangesRenderedVoice() {
+    void everyPresetLoadsItsInstrumentAndRendersNonSilent() {
         Sf2SoundBank base = new Sf2SoundBank();
-        Sf2SoundBank dark = base.withPreset(PianoPreset.DARK);
-        assertEquals(PianoPreset.DARK, dark.preset());
-        assertTrue(Math.abs(peak(base.newVoice(69, 100)) - peak(dark.newVoice(69, 100))) > 0.0001f);
+        for (PianoPreset preset : PianoPreset.values()) {
+            Sf2SoundBank bank = base.withPreset(preset);
+            assertEquals(preset, bank.preset());
+            assertTrue(peak(bank.newVoice(69, 100)) > 0.0001f, preset + " is silent");
+        }
+    }
+
+    @Test
+    void differentInstrumentPresetsRenderMeaningfullyDifferentAudio() {
+        Sf2SoundBank base = new Sf2SoundBank();
+        float[] grand = render(base.withPreset(PianoPreset.GRAND).newVoice(69, 100));
+        float[] electric = render(base.withPreset(PianoPreset.ELECTRIC).newVoice(69, 100));
+        double signal = 0.0;
+        double difference = 0.0;
+        for (int i = 0; i < grand.length; i++) {
+            signal += grand[i] * grand[i] + electric[i] * electric[i];
+            double delta = grand[i] - electric[i];
+            difference += delta * delta;
+        }
+        assertTrue(signal > 0.0);
+        assertTrue(Math.sqrt(difference / signal) > 0.25, "instrument waveforms must differ audibly");
+        assertNotEquals(peak(grand), peak(electric));
     }
 
     @Test
@@ -82,8 +102,16 @@ class Sf2SoundBankTest {
     }
 
     private static float peak(Voice voice) {
-        float[] frame = new float[960];
+        return peak(render(voice));
+    }
+
+    private static float[] render(Voice voice) {
+        float[] frame = new float[960 * 8];
         voice.renderAdd(frame, frame.length);
+        return frame;
+    }
+
+    private static float peak(float[] frame) {
         float peak = 0.0f;
         for (float value : frame) peak = Math.max(peak, Math.abs(value));
         return peak;

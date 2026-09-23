@@ -2,6 +2,7 @@ package dev.amado.minepiano.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.amado.minepiano.audio.PianoPreset;
@@ -20,19 +21,15 @@ class PianoConfigTest {
         Path path = directory.resolve("config.json");
         PianoConfig saved = new PianoConfig();
         saved.octave = 5;
-        saved.velocity = 80;
         saved.sustain = true;
-        saved.soundfont = "custom.sf2";
-        saved.presetName = PianoPreset.DETUNED.name();
+        saved.presetName = PianoPreset.ORGAN.name();
         saved.keymap.put("L", 13);
         saved.save(path);
 
         PianoConfig loaded = PianoConfig.load(path);
         assertEquals(saved.octave, loaded.octave);
-        assertEquals(saved.velocity, loaded.velocity);
         assertTrue(loaded.sustain);
-        assertEquals(saved.soundfont, loaded.soundfont);
-        assertEquals(PianoPreset.DETUNED.name(), loaded.presetName);
+        assertEquals(PianoPreset.ORGAN.name(), loaded.presetName);
         assertEquals(saved.keymap, loaded.keymap);
         assertEquals(3, loaded.layoutVersion);
     }
@@ -65,20 +62,18 @@ class PianoConfigTest {
         Files.writeString(path, """
                 {"keymap":{"Z":0},"layoutVersion":3,"octave":5,"velocity":80,
                  "masterVolume":0.75,"localVolume":0.5,"svcDistance":24.0,
-                 "transmitToVoiceChat":false,"soundfont":"custom.sf2","presetName":"DETUNED"}
+                 "transmitToVoiceChat":false,"soundfont":"custom.sf2","presetName":"ORGAN"}
                 """);
 
         PianoConfig loaded = PianoConfig.load(path);
 
         assertTrue(!loaded.sustain);
         assertEquals(5, loaded.octave);
-        assertEquals(80, loaded.velocity);
         assertEquals(0.75F, loaded.masterVolume);
         assertEquals(0.5F, loaded.localVolume);
         assertEquals(24.0F, loaded.svcDistance);
         assertTrue(!loaded.transmitToVoiceChat);
-        assertEquals("custom.sf2", loaded.soundfont);
-        assertEquals(PianoPreset.DETUNED.name(), loaded.presetName);
+        assertEquals(PianoPreset.ORGAN.name(), loaded.presetName);
     }
 
     @Test
@@ -94,10 +89,8 @@ class PianoConfigTest {
         assertEquals(PianoConfig.defaultKeymap(), loaded.keymap);
         assertEquals(3, loaded.layoutVersion);
         assertEquals(5, loaded.octave);
-        assertEquals(80, loaded.velocity);
         assertEquals(0.75F, loaded.masterVolume);
         assertEquals(24.0F, loaded.svcDistance);
-        assertEquals("custom.sf2", loaded.soundfont);
         assertEquals(PianoPreset.REALISTIC.name(), loaded.presetName);
         assertTrue(Files.readString(path).contains("\"layoutVersion\": 3"));
         assertTrue(Files.readString(path).contains("\"presetName\": \"REALISTIC\""));
@@ -107,16 +100,33 @@ class PianoConfigTest {
     void migratesLegacyPresetIndexWithoutChangingOtherSettings(@TempDir Path directory) throws Exception {
         Path path = directory.resolve("config.json");
         PianoConfig original = new PianoConfig();
-        original.velocity = 73;
         original.save(path);
         String json = Files.readString(path).replace("\"presetName\": \"REALISTIC\"", "\"preset\": 7");
         Files.writeString(path, json);
 
         PianoConfig loaded = PianoConfig.load(path);
 
-        assertEquals(PianoPreset.DETUNED.name(), loaded.presetName);
-        assertEquals(73, loaded.velocity);
-        assertTrue(Files.readString(path).contains("\"presetName\": \"DETUNED\""));
+        assertEquals(PianoPreset.ORGAN.name(), loaded.presetName);
+        assertTrue(Files.readString(path).contains("\"presetName\": \"ORGAN\""));
+    }
+
+    @Test
+    void ignoresRemovedVelocityAndSoundfontFields(@TempDir Path directory) throws Exception {
+        Path path = directory.resolve("config.json");
+        Files.writeString(path, """
+                {"keymap":{"Z":0},"layoutVersion":3,"octave":5,"velocity":999,
+                 "soundfont":null,"masterVolume":0.75,"presetName":"GRAND"}
+                """);
+
+        PianoConfig loaded = PianoConfig.load(path);
+        loaded.save(path);
+
+        assertEquals(5, loaded.octave);
+        assertEquals(0.75F, loaded.masterVolume);
+        assertEquals(PianoPreset.GRAND.name(), loaded.presetName);
+        String saved = Files.readString(path);
+        assertFalse(saved.contains("velocity"));
+        assertFalse(saved.contains("soundfont"));
     }
 
     @Test

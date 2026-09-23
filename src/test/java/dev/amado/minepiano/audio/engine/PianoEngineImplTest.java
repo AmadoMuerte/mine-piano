@@ -17,6 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PianoEngineImplTest {
     @Test
+    void presetSwitchPublishesSelectedInstrumentToEngine() {
+        PianoEngineImpl engine = new PianoEngineImpl();
+        assertEquals(PianoPreset.REALISTIC, engine.currentPreset());
+        engine.setPreset(PianoPreset.ELECTRIC);
+        assertEquals(PianoPreset.ELECTRIC, engine.currentPreset());
+    }
+
+    @Test
     @Timeout(5)
     void crossThreadCommandsRunOnAudioThreadAndFramesKeepContract() throws Exception {
         TestBank bank = new TestBank(64);
