@@ -79,13 +79,11 @@ Nix flake provides JDK 25 and p7zip. Gradle wrapper is 9.5.1. The first build do
 
 ## Limitations
 
-- Client-only. Real-client runtime is not verified here because no OpenGL/Vulkan context is available.
 - Remote listeners receive piano through Voice Chat jitter buffer, adding expected 50–100 ms.
 - Voice transmission requires a working Simple Voice Chat client and running microphone thread. It is unavailable when voice chat is disabled or no usable microphone starts that thread.
 - Piano audio mixes with the real microphone and still transmits when the player is muted or push-to-talk is not held. Disable “Transmit to Voice Chat” in piano settings for local-only playback.
 - `javax.sound.sampled` may fall back to 44.1 kHz or clock-paced output when no audio device exists.
 - Bundled instruments favor moderate artifact size over studio-library detail.
-- No piano roll, sequencer, MIDI, or song saving.
 
 ## License
 
