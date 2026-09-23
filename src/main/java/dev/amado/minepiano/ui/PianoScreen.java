@@ -41,6 +41,7 @@ public final class PianoScreen extends Screen {
     private int panelY;
     private int panelWidth;
     private int panelHeight;
+    private int headerHeight;
     private int keyboardBottom;
     private int titleRight;
     private int octaveDisplayX;
@@ -69,6 +70,7 @@ public final class PianoScreen extends Screen {
         panelY = panel.y();
         panelWidth = panel.width();
         panelHeight = panel.height();
+        headerHeight = header.height();
         keyboardBottom = keyboard.bottom();
 
         int inset = Math.min(12, Math.max(0, (header.width() - 1) / 10));
@@ -77,7 +79,7 @@ public final class PianoScreen extends Screen {
         int buttonWidth = Math.min(22, Math.max(1, (available - gap * 2) / 4));
         int sustainWidth = Math.max(1, Math.min(134, available - buttonWidth * 2 - gap * 2));
         int right = header.right() - inset;
-        int controlHeight = Math.min(22, header.height());
+        int controlHeight = Math.max(1, Math.min(22, header.height() - 4));
         int controlY = header.y() + (header.height() - controlHeight) / 2;
         if (available < 3) {
             titleRight = panelX;
@@ -133,7 +135,7 @@ public final class PianoScreen extends Screen {
                 int hintX = controlsWidth >= desired ? collapseX - itemGap - widths[3]
                         : x + widths[2] + itemGap;
                 addRenderableWidget(new Toggle(hintX, barY, widths[3], barHeight,
-                        Component.translatable("gui.minepiano.show_hints"), () -> showHints,
+                        controlsWidth < desired ? Component.empty() : Component.translatable("gui.minepiano.show_hints"), () -> showHints,
                         this::toggleHints, false));
             }
         }
@@ -142,18 +144,22 @@ public final class PianoScreen extends Screen {
     }
 
     static PanelLayout layout(int screenWidth, int screenHeight, boolean collapsed) {
-        int horizontalSpace = Math.min(40, Math.max(0, screenWidth - 1));
-        int panelWidth = Math.min(1000, Math.max(1, screenWidth - horizontalSpace));
-        int bottomMargin = Math.min(10, Math.max(0, screenHeight - 1));
-        int topMargin = Math.min(6, Math.max(0, screenHeight - bottomMargin - 1));
-        int bottomHeight = collapsed ? 24 : 42;
-        int panelHeight = Math.min(54 + 160 + bottomHeight,
-                Math.max(1, screenHeight - bottomMargin - topMargin));
-        int keyboardHeight = Math.min(160, Math.max(1, panelHeight - 54 - bottomHeight));
-        int chromeHeight = panelHeight - keyboardHeight;
-        int headerHeight = chromeHeight >= 54 + bottomHeight ? 54
-                : chromeHeight * 54 / (54 + bottomHeight);
-        bottomHeight = chromeHeight - headerHeight;
+        int panelWidth = Math.min(clamp(Math.round(screenWidth * 0.50f), 240, 520),
+                Math.max(1, Math.round(screenWidth * 0.55f)));
+        int bottomMargin = Math.min(clamp(Math.round(screenHeight * 0.02f), 4, 10),
+                Math.max(0, screenHeight - 1));
+        int headerHeight = clamp(Math.round(screenHeight * 0.10f), 26, 40);
+        int bottomHeight = clamp(Math.round(screenHeight * 0.085f), 20, 30);
+        int keyboardHeight = clamp(Math.round(screenHeight * 0.17f), 44, 120);
+        int availableHeight = Math.max(1, screenHeight - bottomMargin);
+        if (headerHeight + keyboardHeight + bottomHeight > availableHeight) {
+            keyboardHeight = Math.max(1, availableHeight - headerHeight - bottomHeight);
+            if (keyboardHeight == 1) {
+                headerHeight = Math.max(1, availableHeight - bottomHeight - keyboardHeight);
+                bottomHeight = Math.max(1, availableHeight - headerHeight - keyboardHeight);
+            }
+        }
+        int panelHeight = headerHeight + keyboardHeight + bottomHeight;
         int panelX = Math.max(0, (screenWidth - panelWidth) / 2);
         int panelY = Math.max(0, screenHeight - bottomMargin - panelHeight);
         int keyboardInset = Math.min(12, Math.max(0, (panelWidth - 1) / 2));
@@ -164,6 +170,8 @@ public final class PianoScreen extends Screen {
         Rect bar = new Rect(panelX, keyboard.bottom(), panelWidth, bottomHeight);
         return new PanelLayout(panel, header, keyboard, bar);
     }
+
+    private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
 
     static record PanelLayout(Rect panel, Rect header, Rect keyboard, Rect bottomBar) { }
 
@@ -183,7 +191,6 @@ public final class PianoScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        roundedRect(graphics, panelX - 3, panelY + 4, panelWidth + 6, panelHeight, 0x44000000);
         roundedBorder(graphics, panelX, panelY, panelWidth, panelHeight, BORDER, PANEL);
         if (panelWidth > 20)
             graphics.fill(panelX + 10, keyboardBottom + 1, panelX + panelWidth - 10,
@@ -194,9 +201,11 @@ public final class PianoScreen extends Screen {
         int titleWidth = Math.max(0, titleRight - panelX - 35);
         if (titleWidth > 4) {
             String titleText = font.plainSubstrByWidth(title.getString(), titleWidth);
-            String subtitle = font.plainSubstrByWidth(Component.translatable("gui.minepiano.subtitle").getString(), titleWidth);
             graphics.text(font, Component.literal(titleText).withStyle(ChatFormatting.BOLD), panelX + 35, panelY + 11, TEXT, false);
-            graphics.text(font, subtitle, panelX + 35, panelY + 27, MUTED, false);
+            if (headerHeight >= 32) {
+                String subtitle = font.plainSubstrByWidth(Component.translatable("gui.minepiano.subtitle").getString(), titleWidth);
+                graphics.text(font, subtitle, panelX + 35, panelY + 27, MUTED, false);
+            }
         }
         if (!controlsCollapsed && octaveDisplayWidth > 0) {
             roundedBorder(graphics, octaveDisplayX, bottomControlY, octaveDisplayWidth, bottomControlHeight,
@@ -362,13 +371,17 @@ public final class PianoScreen extends Screen {
             boolean on = value.getAsBoolean();
             roundedBorder(graphics, getX(), getY(), getWidth(), getHeight(),
                     isHoveredOrFocused() ? ACCENT : BORDER, CONTROL);
-            int switchWidth = Math.min(28, Math.max(4, getWidth() / 3));
-            int switchX = getRight() - switchWidth - 5;
-            int switchY = getY() + (getHeight() - 14) / 2;
-            roundedRect(graphics, switchX, switchY, switchWidth, 14, on ? ACCENT : 0xFF55514C);
-            int knobWidth = Math.min(10, Math.max(2, switchWidth - 4));
-            roundedRect(graphics, switchX + (on ? switchWidth - knobWidth - 2 : 2), switchY + 2,
-                    knobWidth, 10, 0xFFF8F4EF);
+            int switchWidth = Math.min(28, Math.max(1, getWidth() / 3));
+            int switchInset = Math.min(5, Math.max(0, getWidth() - switchWidth));
+            int switchX = getRight() - switchWidth - switchInset;
+            int switchHeight = Math.min(14, Math.max(1, getHeight() - 4));
+            int switchY = getY() + (getHeight() - switchHeight) / 2;
+            roundedRect(graphics, switchX, switchY, switchWidth, switchHeight, on ? ACCENT : 0xFF55514C);
+            int knobWidth = Math.min(switchWidth, Math.max(1, switchWidth - 4));
+            int knobHeight = Math.min(switchHeight, Math.max(1, switchHeight - 4));
+            int knobInset = Math.min(2, Math.max(0, switchWidth - knobWidth));
+            roundedRect(graphics, switchX + (on ? switchWidth - knobWidth - knobInset : knobInset),
+                    switchY + (switchHeight - knobHeight) / 2, knobWidth, knobHeight, 0xFFF8F4EF);
             Component state = Component.translatable(on ? "gui.minepiano.on" : "gui.minepiano.off");
             String text = showState ? label.getString() + ": " + state.getString() : label.getString();
             int room = switchX - getX() - 8;

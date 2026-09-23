@@ -30,7 +30,7 @@ public final class PianoKeyboard extends AbstractWidget {
 
     @Override
     protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        PianoScreen.roundedRect(graphics, getX() - 3, getY() - 3, getWidth() + 6, getHeight() + 6, 0xFF0D0C0B);
+        PianoScreen.roundedRect(graphics, getX(), getY(), getWidth(), getHeight(), 0xFF0D0C0B);
         for (int white = 0; white < 21; white++) {
             int note = baseNote + whiteToSemitone(white);
             int left = whiteLeft(white);
@@ -38,12 +38,12 @@ public final class PianoKeyboard extends AbstractWidget {
             int color = engine.isNoteActive(note) ? 0xFFFFC46E : 0xFFF3F0EA;
             graphics.fill(left, getY(), right - 1, getBottom(), color);
             graphics.fill(right - 1, getY(), right, getBottom(), 0xFF5B5650);
-            if (getHeight() >= 18) {
+            if (getHeight() >= 18 && getWidth() / 21 >= 6) {
                 String name = NAMES[white % 7];
                 graphics.centeredText(Minecraft.getInstance().font, name, (left + right) / 2,
                         getBottom() - 14, 0xFF413E39);
             }
-            if (getHeight() >= 32)
+            if (getHeight() >= 32 && getWidth() / 21 >= 12)
                 drawHint(graphics, note - baseNote, (left + right) / 2, getBottom() - 28, 0xFF7A7167);
         }
         int blackHeight = getHeight() * 3 / 5;
@@ -56,7 +56,7 @@ public final class PianoKeyboard extends AbstractWidget {
             graphics.fill(left - 1, getY(), left + blackWidth + 1, getY() + blackHeight + 2, 0xFF090909);
             graphics.fill(left, getY(), left + blackWidth, getY() + blackHeight,
                     engine.isNoteActive(note) ? PianoScreen.ACCENT : 0xFF22211F);
-            if (blackHeight >= 18)
+            if (blackHeight >= 18 && getWidth() / 21 >= 12)
                 drawHint(graphics, note - baseNote, left + blackWidth / 2, getY() + blackHeight - 15, 0xFFD4CDC5);
         }
         int hovered = noteAt(mouseX, mouseY);
