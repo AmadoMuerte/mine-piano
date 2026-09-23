@@ -27,15 +27,23 @@ Download the jar from [GitHub Releases](https://github.com/AmadoMuerte/mine-pian
 
 Open the piano with `P` by default (`MISC` category; key `key.minepiano.open`).
 
-| Control | Default |
+| Control | How |
 | --- | --- |
-| Piano keys | `A=C`, `W=C#`, `S=D`, `E=D#`, `D=E`, `F=F`, `T=F#`, `G=G`, `Y=G#`, `H=A`, `U=A#`, `J=B`, `K=C` (next octave) |
-| Mouse | Click to play; drag for glissando |
-| Octave | `Z` down, `X` up |
-| Sustain | `Space` |
-| Close | `Escape` (sends note-off for all active notes) |
+| Piano keys | FL-style three-octave layout (see below) |
+| Mouse | Click a key to play; drag across keys for glissando |
+| Octave | `‹ Octave Down` / `Octave Up ›` buttons in the piano window (default `C4`) |
+| Sustain | `Space`, or the Sustain toggle in the window header |
+| Close | `Escape` or the `×` button (sends note-off for all active notes) |
 
-Change the piano key layout in settings. It is saved to `config/mine-piano/config.json`.
+Default key layout (three octaves):
+
+| Octave | Keys |
+| --- | --- |
+| Lower | `Z S X D C V G B H N J M` |
+| Middle | `, Q 2 W 3 E R 5 T 6 Y 7 U` |
+| Upper | `I 9 O 0 P [ ] \ L . ; /` |
+
+The `⚙` button opens settings (master volume, preset, Voice Chat transmission, key rebinding); the `⌄` button collapses the bottom controls. Change the piano key layout in settings. It is saved to `config/mine-piano/config.json`.
 
 ## Presets
 
