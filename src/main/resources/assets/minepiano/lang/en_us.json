@@ -32,5 +32,8 @@
   "gui.minepiano.keymap": "Key Bindings",
   "gui.minepiano.binding": "Binding: %s",
   "gui.minepiano.press_key": "Press a key…",
-  "gui.minepiano.done": "Done / Back"
+  "gui.minepiano.done": "Done / Back",
+  "modmenu.nameTranslation.minepiano": "Mine Piano",
+  "modmenu.summaryTranslation.minepiano": "A real piano in Minecraft with SoundFont audio and Voice Chat.",
+  "modmenu.descriptionTranslation.minepiano": "Client-side piano: play with keyboard and mouse, 10 instrument presets driven by a built-in SF2 sampler, and transmit your performance to other players through Simple Voice Chat."
 }

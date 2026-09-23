@@ -32,5 +32,8 @@
   "gui.minepiano.keymap": "Назначение клавиш",
   "gui.minepiano.binding": "Клавиша: %s",
   "gui.minepiano.press_key": "Нажмите клавишу…",
-  "gui.minepiano.done": "Готово / Назад"
+  "gui.minepiano.done": "Готово / Назад",
+  "modmenu.nameTranslation.minepiano": "Mine Piano",
+  "modmenu.summaryTranslation.minepiano": "Настоящее пианино в Minecraft со SoundFont и голосовым чатом.",
+  "modmenu.descriptionTranslation.minepiano": "Клиентское пианино: играйте с клавиатуры и мыши, 10 пресетов инструментов на встроенном SF2-сэмплере и передача звука другим игрокам через Simple Voice Chat."
 }

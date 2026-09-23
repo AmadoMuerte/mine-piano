@@ -3,6 +3,15 @@
   "id": "minepiano",
   "version": "${version}",
   "name": "Mine Piano",
+  "description": "Client-side piano for Minecraft with a real SoundFont engine and Simple Voice Chat transmission.",
+  "authors": ["AmadoMuerte"],
+  "license": "MIT",
+  "icon": "assets/minepiano/icon.png",
+  "contact": {
+    "homepage": "https://github.com/AmadoMuerte/mine-piano",
+    "sources": "https://github.com/AmadoMuerte/mine-piano",
+    "issues": "https://github.com/AmadoMuerte/mine-piano/issues"
+  },
   "environment": "client",
   "entrypoints": {
     "client": ["dev.amado.minepiano.MinePianoClient"],
@@ -16,5 +25,8 @@
   },
   "recommends": {
     "voicechat_api": ">=2.6.0"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }
