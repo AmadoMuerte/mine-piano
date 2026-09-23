@@ -6,3 +6,4 @@ run/
 /out/
 .idea/
 *.iml
+.opencode/
