@@ -1,15 +1,31 @@
+<p align="center"><img src="assets/logo.png" alt="Mine Piano" width="240"></p>
+
+**English** | [Русский](README.ru.md)
+
 # Mine Piano
 
-Client-side Fabric piano mod for Minecraft 26.2 (Java 25).
+Client-side Fabric piano mod for Minecraft 26.2 (Java 25), with a real SoundFont engine and Simple Voice Chat transmission.
+
+## Features
+
+- Real-time piano UI played with keyboard or mouse.
+- Own minimal SF2 sampler: 48 kHz mono audio in 20 ms blocks.
+- 10 instrument presets.
+- Optional transmission to other players through Simple Voice Chat.
+- Settings are saved to `config/mine-piano/config.json`.
 
 ## Requirements
 
-- Fabric Loader and Fabric API
-- [Simple Voice Chat](https://github.com/henkelmax/simple-voice-chat) 2.6.x is required to transmit piano audio to other players. Without it, piano audio remains local.
+- Fabric Loader and Fabric API.
+- [Simple Voice Chat](https://github.com/henkelmax/simple-voice-chat) 2.6.x is optional. It is required only to transmit piano audio to other players; without it, piano audio stays local.
 
-## Playing
+## Installation
 
-Open piano with `P` by default (`MISC` category; key `key.minepiano.open`).
+Download the jar from [GitHub Releases](https://github.com/AmadoMuerte/mine-piano/releases) and place it in `.minecraft/mods`. Install Fabric API as well. Install Simple Voice Chat 2.6.x if you want to transmit piano audio to other players.
+
+## Controls
+
+Open the piano with `P` by default (`MISC` category; key `key.minepiano.open`).
 
 | Control | Default |
 | --- | --- |
@@ -19,17 +35,11 @@ Open piano with `P` by default (`MISC` category; key `key.minepiano.open`).
 | Sustain | `Space` |
 | Close | `Escape` (sends note-off for all active notes) |
 
-Change piano key layout in settings. It is stored in `config/mine-piano/config.json`.
+Change the piano key layout in settings. It is saved to `config/mine-piano/config.json`.
 
-## Audio
+## Presets
 
-Mine Piano uses its own minimal SF2 sampler, not Minecraft noteblock sounds: 48 kHz mono, 20 ms blocks, pooled voices, and 0 allocations per block. Typical local latency is about 35–55 ms. Through Simple Voice Chat, piano frames are merged with the processed microphone and transmitted as the player's normal voice. Normal proximity, distance, group, and server relay rules apply.
-
-Keyboard and mouse notes use one fixed internal strike level. MIDI velocity remains internal to the sampler API.
-
-### Presets
-
-Presets switch live for new notes and are saved in `config/mine-piano/config.json`. Existing notes finish naturally. Instrument selection is combined with gain, attack, release, sustain, detune, and low-pass voicing:
+Presets switch live for new notes and are saved in `config/mine-piano/config.json`. Existing notes finish naturally. Instrument selection is combined with gain, attack, release, sustain, detune, and low-pass voicing.
 
 | Preset | Instrument | Bank / program | Voicing: gain / attack / release / sustain / detune / low-pass |
 | --- | --- | --- | --- |
@@ -44,6 +54,12 @@ Presets switch live for new notes and are saved in `config/mine-piano/config.jso
 | Melancholic | FreePats upright | 0 / 0 | 0.78 / 1.35 / 1.75 / 0.72 / -4.0 / 0.28 |
 | Concert | GeneralUser acoustic grand | 0 / 0 | 0.86 / 0.92 / 2.40 / 1.06 / 1.5 / 0.03 |
 
+## Audio notes
+
+Mine Piano uses its own minimal SF2 sampler, not Minecraft noteblock sounds: 48 kHz mono, 20 ms blocks, pooled voices, and 0 allocations per block. Typical local latency is about 35–55 ms. Through Simple Voice Chat, piano frames are merged with the processed microphone and transmitted as the player's normal voice. Normal proximity, distance, group, and server relay rules apply.
+
+Keyboard and mouse notes use one fixed internal strike level. MIDI velocity remains internal to the sampler API.
+
 ## Build
 
 ```sh
@@ -53,24 +69,13 @@ direnv allow
 ./gradlew runClient
 ```
 
-Nix flake provides JDK 25 and p7zip. Gradle wrapper is 9.5.1. First build downloads SoundFont archive; build offline with:
+Nix flake provides JDK 25 and p7zip. Gradle wrapper is 9.5.1. The first build downloads the SoundFont archive. Build offline with:
 
 ```sh
 ./gradlew build -Psoundfont=/path/to/upright.sf2 -PgmSoundfont=/path/to/GeneralUser-GS.sf2
 ```
 
-`downloadDevMods` downloads Simple Voice Chat into `run/mods` for development.
-
-## Libraries and assets
-
-No third-party Java runtime libraries are bundled. Only compile-time dependency is Simple Voice Chat API (`de.maxhenkel.voicechat:voicechat-api:2.6.24`), not bundled. Instrument is self-written SF2 sampler.
-
-Bundled assets:
-
-- FreePats Upright Piano KW (small): https://freepats.zenvoid.org/Piano/UprightPianoKW/UprightPianoKW-small-SF2-20190703.7z
-- GeneralUser GS: https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/GeneralUser-GS.sf2
-
-See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+`downloadDevMods` fetches Simple Voice Chat into `run/mods` for development.
 
 ## Limitations
 
@@ -81,3 +86,11 @@ See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 - `javax.sound.sampled` may fall back to 44.1 kHz or clock-paced output when no audio device exists.
 - Bundled instruments favor moderate artifact size over studio-library detail.
 - No piano roll, sequencer, MIDI, or song saving.
+
+## License
+
+MIT. See [LICENSE](LICENSE). Bundled SoundFont assets are covered in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+## Credits
+
+Author: AmadoMuerte
