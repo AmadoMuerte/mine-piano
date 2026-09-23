@@ -4,6 +4,7 @@ import dev.amado.minepiano.audio.PianoEngine;
 import dev.amado.minepiano.config.KeyMap;
 import dev.amado.minepiano.config.PianoConfig;
 import dev.amado.minepiano.input.PianoInput;
+import dev.amado.minepiano.midi.MidiInput;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +35,11 @@ public final class PianoScreen extends Screen {
     private final PianoConfig config;
     private final KeyMap keyMap;
     private final PianoInput input;
+    private final MidiInput midi;
     private final Map<Integer, Integer> heldNotes = new HashMap<>();
+    private PianoKeyboard keyboard;
+    private boolean midiStarted;
+    private int midiTicks;
     private boolean showHints;
     private boolean controlsCollapsed;
     private int panelX;
@@ -52,15 +57,15 @@ public final class PianoScreen extends Screen {
     public PianoScreen(PianoEngine engine, PianoConfig config) {
         super(Component.translatable("gui.minepiano.title"));
         this.engine = engine;
+        this.midi = new MidiInput(engine);
         this.config = config;
         keyMap = new KeyMap(config);
         input = new PianoInput(keyMap, config.octave, config.sustain);
-        engine.setSustain(config.sustain);
     }
 
     @Override
     protected void init() {
-        engine.setSustain(input.sustain());
+        if (keyboard != null) keyboard.releaseMouse();
         PanelLayout layout = layout(width, height, controlsCollapsed);
         Rect panel = layout.panel();
         Rect header = layout.header();
@@ -98,7 +103,7 @@ public final class PianoScreen extends Screen {
                     Component.translatable("gui.minepiano.sustain"), input::sustain, this::toggleSustain, true));
         }
 
-        addRenderableWidget(new PianoKeyboard(keyboard.x(), keyboard.y(), keyboard.width(), keyboard.height(),
+        this.keyboard = addRenderableWidget(new PianoKeyboard(keyboard.x(), keyboard.y(), keyboard.width(), keyboard.height(),
                 engine, input.octave(), keyMap, showHints));
 
         int barHeight = Math.min(26, bottomBar.height());
@@ -141,6 +146,12 @@ public final class PianoScreen extends Screen {
         }
         addRenderableWidget(new Action(collapseX, barY, collapseWidth, barHeight,
                 Component.literal(controlsCollapsed ? "⌃" : "⌄"), this::toggleControls));
+
+        if (!midiStarted) {
+            midiStarted = true;
+            engine.setSustain(input.sustain());
+            if (config.midiEnabled) midi.start(config.midiDevice);
+        }
     }
 
     static PanelLayout layout(int screenWidth, int screenHeight, boolean collapsed) {
@@ -262,8 +273,22 @@ public final class PianoScreen extends Screen {
 
     @Override
     public void removed() {
-        stopNotes();
-        super.removed();
+        try { midi.stop(); } finally {
+            midiStarted = false;
+            stopNotes();
+            super.removed();
+        }
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        int note = midi.pollNote();
+        if (note >= 0) autoScroll(note);
+        if (++midiTicks >= 40) {
+            midiTicks = 0;
+            if (config.midiEnabled && !midi.isConnected() && midi.canConnect()) midi.start(config.midiDevice);
+        }
     }
 
     private void openSettings() {
@@ -304,7 +329,16 @@ public final class PianoScreen extends Screen {
 
     private void syncControls() {
         config.octave = input.octave();
-        engine.setSustain(input.sustain());
+        rebuildWidgets();
+    }
+
+    private void autoScroll(int note) {
+        int base = (input.octave() + 1) * 12;
+        if (note >= base && note <= base + 35) return;
+        int target = note < base ? note / 12 - 1 : note / 12 - 3;
+        target = Math.max(PianoConfig.MIN_OCTAVE, Math.min(PianoConfig.MAX_OCTAVE, target));
+        if (target == input.octave()) return;
+        input.setOctave(target);
         rebuildWidgets();
     }
 

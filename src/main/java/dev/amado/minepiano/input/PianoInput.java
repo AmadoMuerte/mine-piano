@@ -1,6 +1,7 @@
 package dev.amado.minepiano.input;
 
 import dev.amado.minepiano.config.KeyMap;
+import dev.amado.minepiano.config.PianoConfig;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -22,7 +23,7 @@ public final class PianoInput {
 
     public PianoInput(KeyMap keyMap, int octave, boolean sustain) {
         this.keyMap = keyMap;
-        this.octave = octave;
+        this.octave = PianoConfig.clampOctave(octave);
         this.sustain = sustain;
     }
 
@@ -53,15 +54,19 @@ public final class PianoInput {
     }
 
     public void octaveUp() {
-        octave++;
+        setOctave(octave + 1);
     }
 
     public void octaveDown() {
-        octave--;
+        setOctave(octave - 1);
     }
 
     public int octave() {
         return octave;
+    }
+
+    public void setOctave(int octave) {
+        this.octave = PianoConfig.clampOctave(octave);
     }
 
     public boolean toggleSustain() {

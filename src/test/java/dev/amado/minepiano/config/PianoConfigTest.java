@@ -23,6 +23,8 @@ class PianoConfigTest {
         saved.octave = 5;
         saved.sustain = true;
         saved.presetName = PianoPreset.ORGAN.name();
+        saved.midiEnabled = false;
+        saved.midiDevice = "Keyboard";
         saved.keymap.put("L", 13);
         saved.save(path);
 
@@ -30,6 +32,8 @@ class PianoConfigTest {
         assertEquals(saved.octave, loaded.octave);
         assertTrue(loaded.sustain);
         assertEquals(PianoPreset.ORGAN.name(), loaded.presetName);
+        assertFalse(loaded.midiEnabled);
+        assertEquals("Keyboard", loaded.midiDevice);
         assertEquals(saved.keymap, loaded.keymap);
         assertEquals(3, loaded.layoutVersion);
     }
@@ -74,6 +78,19 @@ class PianoConfigTest {
         assertEquals(24.0F, loaded.svcDistance);
         assertTrue(!loaded.transmitToVoiceChat);
         assertEquals(PianoPreset.ORGAN.name(), loaded.presetName);
+        assertTrue(loaded.midiEnabled);
+        assertEquals("", loaded.midiDevice);
+    }
+
+    @Test
+    void clampsOutOfRangeOctavesOnLoad(@TempDir Path directory) throws Exception {
+        Path high = directory.resolve("high.json");
+        Path low = directory.resolve("low.json");
+        Files.writeString(high, "{\"keymap\":{\"Z\":0},\"layoutVersion\":3,\"octave\":99}");
+        Files.writeString(low, "{\"keymap\":{\"Z\":0},\"layoutVersion\":3,\"octave\":-99}");
+
+        assertEquals(PianoConfig.MAX_OCTAVE, PianoConfig.load(high).octave);
+        assertEquals(PianoConfig.MIN_OCTAVE, PianoConfig.load(low).octave);
     }
 
     @Test

@@ -27,6 +27,14 @@ Download the jar from [GitHub Releases](https://github.com/AmadoMuerte/mine-pian
 
 Open the piano with `P` by default (`MISC` category; key `key.minepiano.open`).
 
+### MIDI keyboard
+
+- Connect a MIDI keyboard to play while the piano window is open. MIDI is read only while that window is open; closing it releases the device and stops all notes. No extra dependency or driver is needed.
+- MIDI notes `0..127` (all octaves) sound with their real velocity, and the sustain pedal (CC64) is supported. The three-octave on-screen keyboard auto-scrolls to the octave played; notes `120..127` sound but cannot be drawn there.
+- Select the MIDI device and toggle MIDI input on or off in piano settings. These settings are saved to `config/mine-piano/config.json`.
+
+> **Note:** MIDI support is currently in testing (beta). Behaviour and settings may change in a future release.
+
 | Control | How |
 | --- | --- |
 | Piano keys | FL-style three-octave layout (see below) |
@@ -66,7 +74,7 @@ Presets switch live for new notes and are saved in `config/mine-piano/config.jso
 
 Mine Piano uses its own minimal SF2 sampler, not Minecraft noteblock sounds: 48 kHz mono, 20 ms blocks, pooled voices, and 0 allocations per block. Typical local latency is about 35–55 ms. Through Simple Voice Chat, piano frames are merged with the processed microphone and transmitted as the player's normal voice. Normal proximity, distance, group, and server relay rules apply.
 
-Keyboard and mouse notes use one fixed internal strike level. MIDI velocity remains internal to the sampler API.
+Keyboard and mouse notes use one fixed strike level. MIDI notes use their own velocity to determine loudness.
 
 ## Build
 

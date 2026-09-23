@@ -25,6 +25,25 @@ class PianoSettingsScreenTest {
     }
 
     @Test
+    void midiRowsPreserveKeymapSpace() {
+        for (int height : new int[] {70, 120, 230, 249, 390}) {
+            PianoSettingsScreen.Layout baseline = PianoSettingsScreen.layout(5, height, false);
+            PianoSettingsScreen.Layout layout = PianoSettingsScreen.layout(5, height, true);
+            assertEquals(-1, baseline.midiToggleY());
+            assertEquals(-1, baseline.midiDeviceY());
+            assertEquals(layout.midiToggleY() >= 0, layout.midiDeviceY() >= 0);
+            if (layout.midiToggleY() >= 0) {
+                assertTrue(layout.bindingsY() < layout.doneY());
+                assertTrue(layout.keymapLabelY() >= layout.midiDeviceY() + 28);
+                assertTrue(layout.midiDeviceY() >= layout.midiToggleY() + 28);
+            } else {
+                assertEquals(-1, layout.midiDeviceY());
+            }
+        }
+        assertEquals(-1, PianoSettingsScreen.layout(5, 230, true).midiToggleY());
+    }
+
+    @Test
     void settingsAndConfigHaveNoVelocityOrSoundfontRows() {
         assertFalse(Arrays.stream(PianoSettingsScreen.Layout.class.getRecordComponents())
                 .anyMatch(component -> component.getName().contains("velocity") || component.getName().contains("soundfont")));

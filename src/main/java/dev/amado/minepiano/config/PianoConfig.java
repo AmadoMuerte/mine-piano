@@ -13,6 +13,8 @@ import java.util.Map;
 /** Persistent client settings. */
 public final class PianoConfig {
     public static final Path DEFAULT_PATH = Path.of("config", "mine-piano", "config.json");
+    public static final int MIN_OCTAVE = -1;
+    public static final int MAX_OCTAVE = 6;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public Map<String, Integer> keymap = defaultKeymap();
@@ -24,6 +26,8 @@ public final class PianoConfig {
     public boolean transmitToVoiceChat = true;
     public boolean sustain = false;
     public String presetName = PianoPreset.REALISTIC.name();
+    public boolean midiEnabled = true;
+    public String midiDevice = "";
 
     public static PianoConfig load() {
         return load(DEFAULT_PATH);
@@ -43,7 +47,11 @@ public final class PianoConfig {
                     config.presetName = presets[Math.max(0, Math.min(presets.length - 1, oldPreset))].name();
                     migrated = true;
                 }
-                if (config != null) config.presetName = PianoPreset.fromName(config.presetName).name();
+                if (config != null) {
+                    config.presetName = PianoPreset.fromName(config.presetName).name();
+                    if (config.midiDevice == null) config.midiDevice = "";
+                    config.octave = clampOctave(config.octave);
+                }
                 if (config != null && config.valid()) {
                     if (config.layoutVersion < 3) {
                         config.keymap = defaultKeymap();
@@ -81,6 +89,10 @@ public final class PianoConfig {
         Path parent = path.getParent();
         if (parent != null) Files.createDirectories(parent);
         Files.writeString(path, GSON.toJson(this));
+    }
+
+    public static int clampOctave(int octave) {
+        return Math.max(MIN_OCTAVE, Math.min(MAX_OCTAVE, octave));
     }
 
     public static Map<String, Integer> defaultKeymap() {

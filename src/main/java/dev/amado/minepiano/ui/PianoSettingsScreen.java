@@ -4,6 +4,7 @@ import dev.amado.minepiano.audio.PianoEngine;
 import dev.amado.minepiano.audio.PianoPreset;
 import dev.amado.minepiano.config.KeyMap;
 import dev.amado.minepiano.config.PianoConfig;
+import dev.amado.minepiano.midi.MidiInput;
 import dev.amado.minepiano.voice.VoiceChatOutputHolder;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public final class PianoSettingsScreen extends Screen {
     private final PianoConfig config;
     private final PianoEngine engine;
     private final List<String> keys;
+    private final List<String> midiDevices;
     private int binding = -1;
     private int panelX;
     private int panelY;
@@ -44,6 +46,13 @@ public final class PianoSettingsScreen extends Screen {
         this.engine = engine;
         keys = new ArrayList<>(config.keymap.keySet());
         keys.sort(Comparator.comparingInt(config.keymap::get));
+        List<String> devices;
+        try {
+            devices = MidiInput.deviceNames();
+        } catch (RuntimeException ignored) {
+            devices = List.of();
+        }
+        midiDevices = devices;
     }
 
     @Override
@@ -55,9 +64,9 @@ public final class PianoSettingsScreen extends Screen {
         panelY = Math.max(5, (height - panelHeight) / 2);
         int left = panelX + 14;
         int contentWidth = Math.max(1, panelWidth - 28);
-        Layout layout = layout(panelY, panelHeight);
-        int doneY = layout.doneY();
         boolean controlsFit = contentWidth >= 120;
+        Layout layout = layout(panelY, panelHeight, controlsFit && contentWidth >= 120);
+        int doneY = layout.doneY();
 
         if (controlsFit && fits(layout.volumeY(), 24, doneY)) addRenderableWidget(new Stepper(left, layout.volumeY(), contentWidth, 24, Component.translatable("gui.minepiano.master_volume"),
                 () -> Math.round(config.masterVolume * 100) + "%", amount -> setVolume(config.masterVolume + amount * .05F)));
@@ -71,6 +80,13 @@ public final class PianoSettingsScreen extends Screen {
                     config.transmitToVoiceChat = !config.transmitToVoiceChat;
                     VoiceChatOutputHolder.setEnabled(config.transmitToVoiceChat);
                 }));
+        if (controlsFit && layout.midiToggleY() >= 0 && fits(layout.midiToggleY(), 24, doneY))
+            addRenderableWidget(new Toggle(left, layout.midiToggleY(), contentWidth, 24,
+                    Component.translatable("gui.minepiano.midi_input"), () -> config.midiEnabled,
+                    () -> config.midiEnabled = !config.midiEnabled));
+        if (controlsFit && layout.midiDeviceY() >= 0 && fits(layout.midiDeviceY(), 24, doneY))
+            addRenderableWidget(new Stepper(left, layout.midiDeviceY(), contentWidth, 24,
+                    Component.translatable("gui.minepiano.midi_device"), this::midiDeviceName, this::changeMidiDevice));
         int availableRows = Math.max(0, (doneY - layout.bindingsY() - 4) / 20);
         if (availableRows > 0) {
             keymapLabelY = layout.keymapLabelY();
@@ -154,18 +170,40 @@ public final class PianoSettingsScreen extends Screen {
         return y >= 0 && y + height + 4 <= doneY;
     }
 
-    static Layout layout(int panelY, int panelHeight) {
+    static Layout layout(int panelY, int panelHeight, boolean withMidi) {
         int cursor = panelY + 38;
         int volume = cursor; cursor += 28;
         int preset = cursor; cursor += 28;
         int voiceChat = cursor; cursor += 28;
+        int midiToggle = -1, midiDevice = -1;
+        int done = panelY + panelHeight - 34;
+        if (withMidi && cursor + 56 + 13 + 20 + 4 <= done) {
+            midiToggle = cursor; cursor += 28;
+            midiDevice = cursor; cursor += 28;
+        }
         int keymapLabel = cursor;
-        return new Layout(volume, preset, voiceChat, keymapLabel, keymapLabel + 13,
-                panelY + panelHeight - 34);
+        return new Layout(volume, preset, voiceChat, midiToggle, midiDevice, keymapLabel,
+                keymapLabel + 13, done);
     }
 
-    static record Layout(int volumeY, int presetY, int voiceChatY, int keymapLabelY,
-                         int bindingsY, int doneY) { }
+    static Layout layout(int panelY, int panelHeight) { return layout(panelY, panelHeight, false); }
+
+    static record Layout(int volumeY, int presetY, int voiceChatY, int midiToggleY, int midiDeviceY,
+                         int keymapLabelY, int bindingsY, int doneY) { }
+
+    private String midiDeviceName() {
+        if (midiDevices.isEmpty()) return Component.translatable("gui.minepiano.midi_none").getString();
+        if (config.midiDevice == null || config.midiDevice.isBlank() || !midiDevices.contains(config.midiDevice))
+            return Component.translatable("gui.minepiano.midi_default").getString();
+        return config.midiDevice;
+    }
+
+    private void changeMidiDevice(int amount) {
+        if (midiDevices.isEmpty()) return;
+        int index = midiDevices.indexOf(config.midiDevice) + 1;
+        index = Math.floorMod(index + amount, midiDevices.size() + 1);
+        config.midiDevice = index == 0 ? "" : midiDevices.get(index - 1);
+    }
 
     private static final class Stepper extends AbstractWidget {
         private final Component label;

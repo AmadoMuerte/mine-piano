@@ -108,7 +108,7 @@ public final class PianoKeyboard extends AbstractWidget {
         engine.noteOn(note, PianoScreen.FIXED_VELOCITY);
     }
 
-    private void releaseMouse() {
+    void releaseMouse() {
         if (mouseNote >= 0) engine.noteOff(mouseNote);
         mouseNote = -1;
     }
