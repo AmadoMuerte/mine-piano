@@ -107,4 +107,4 @@ MIT. See [LICENSE](LICENSE). Bundled SoundFont assets are covered in [THIRD_PART
 
 ## Credits
 
-Author: AmadoMuerte
+Author: [AmadoMuerte](https://amadomuerte.ru)
