@@ -19,7 +19,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Bottom-docked piano window, mouse controls, and keyboard input. */
 public final class PianoScreen extends Screen {
@@ -229,11 +229,11 @@ public final class PianoScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }
-        if (event.key() == GLFW.GLFW_KEY_SPACE) {
+        if (event.key() == InputConstants.KEY_SPACE) {
             input.press(event.key());
             config.sustain = input.sustain();
             engine.setSustain(config.sustain);

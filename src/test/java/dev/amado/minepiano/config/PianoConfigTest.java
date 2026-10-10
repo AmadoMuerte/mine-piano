@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 class PianoConfigTest {
     @Test
@@ -150,13 +150,13 @@ class PianoConfigTest {
     void resolvesPhysicalKeysWithoutKeyboardLayout() {
         PianoConfig config = new PianoConfig();
         KeyMap keyMap = new KeyMap(config);
-        assertEquals(0, keyMap.offset(GLFW.GLFW_KEY_Z).getAsInt());
-        assertEquals(35, keyMap.offset(GLFW.GLFW_KEY_SLASH).getAsInt());
+        assertEquals(0, keyMap.offset(InputConstants.KEY_Z).getAsInt());
+        assertEquals(35, keyMap.offset(InputConstants.KEY_SLASH).getAsInt());
         keyMap.bind("Z", 7);
-        assertEquals(7, keyMap.offset(GLFW.GLFW_KEY_Z).getAsInt());
+        assertEquals(7, keyMap.offset(InputConstants.KEY_Z).getAsInt());
         config.keymap.remove("Z");
         config.keymap.put("UNKNOWN", 0);
-        assertTrue(keyMap.offset(GLFW.GLFW_KEY_Z).isEmpty());
-        assertDoesNotThrow(() -> keyMap.offset(GLFW.GLFW_KEY_UNKNOWN));
+        assertTrue(keyMap.offset(InputConstants.KEY_Z).isEmpty());
+        assertDoesNotThrow(() -> keyMap.offset(InputConstants.UNKNOWN.getValue()));
     }
 }

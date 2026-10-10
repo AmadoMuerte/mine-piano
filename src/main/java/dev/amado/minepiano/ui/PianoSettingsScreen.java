@@ -23,7 +23,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Audio controls and key rebinding. */
 public final class PianoSettingsScreen extends Screen {
@@ -120,13 +120,13 @@ public final class PianoSettingsScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }
         if (binding >= 0) {
-            String name = GLFW.glfwGetKeyName(event.key(), event.scancode());
-            if (name != null && !name.isBlank()) {
+            String name = InputConstants.getKey(event).getDisplayName().getString();
+            if (name != null && !name.isBlank() && name.codePointCount(0, name.length()) == 1) {
                 String old = keys.get(binding);
                 String normalized = name.toUpperCase(Locale.ROOT);
                 int offset = config.keymap.remove(old);

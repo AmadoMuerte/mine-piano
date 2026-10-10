@@ -4,7 +4,7 @@
 
 # Mine Piano
 
-Client-side Fabric piano mod for Minecraft 26.2 (Java 25), with a real SoundFont engine and Simple Voice Chat transmission.
+Client-side Fabric piano mod for Minecraft 26.3 (Java 25), with a real SoundFont engine and Simple Voice Chat transmission.
 
 ## Features
 

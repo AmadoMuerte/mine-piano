@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Converts keyboard input into held MIDI notes. */
 public final class PianoInput {
@@ -29,7 +29,7 @@ public final class PianoInput {
 
     public OptionalInt press(int keyCode) {
         if (!heldKeys.add(keyCode)) return OptionalInt.empty();
-        if (keyCode == GLFW.GLFW_KEY_SPACE) {
+        if (keyCode == InputConstants.KEY_SPACE) {
             toggleSustain();
             return OptionalInt.empty();
         }

@@ -7,11 +7,10 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.Screen;
-import org.lwjgl.glfw.GLFW;
 
 public final class MinePianoClient implements ClientModInitializer {
     public static final KeyMapping OPEN_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-        "key.minepiano.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, KeyMapping.Category.MISC));
+        "key.minepiano.open", InputConstants.Type.KEYBOARD, InputConstants.KEY_P, KeyMapping.Category.MISC));
     private static Supplier<Screen> screenOpener;
 
     @Override

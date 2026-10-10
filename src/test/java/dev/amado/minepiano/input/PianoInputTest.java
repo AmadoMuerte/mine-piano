@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.amado.minepiano.config.KeyMap;
 import dev.amado.minepiano.config.PianoConfig;
 import org.junit.jupiter.api.Test;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 class PianoInputTest {
     @Test
@@ -18,7 +18,7 @@ class PianoInputTest {
         input.setSustain(false);
         assertFalse(input.sustain());
         assertTrue(input.toggleSustain());
-        assertTrue(input.press(GLFW.GLFW_KEY_SPACE).isEmpty());
+        assertTrue(input.press(InputConstants.KEY_SPACE).isEmpty());
         assertFalse(input.sustain());
     }
 

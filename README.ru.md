@@ -4,7 +4,7 @@
 
 # Mine Piano
 
-Клиентский мод-пианино Fabric для Minecraft 26.2 (Java 25) с настоящим движком SoundFont и передачей через Simple Voice Chat.
+Клиентский мод-пианино Fabric для Minecraft 26.3 (Java 25) с настоящим движком SoundFont и передачей через Simple Voice Chat.
 
 ## Возможности
 
